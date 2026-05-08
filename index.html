@@ -2715,6 +2715,7 @@ ${sty}
   <div class="winners-section">
     <div class="winners-title">TYPOWANIE ZWYCIĘZCÓW GRUP</div>
     ${winnersHTML}
+    ${winnerBonus > 0 ? '<div style="text-align:center;padding:8px;background:#0a1628;border-top:1px solid #c9a84c33;"><span style="color:#c9a84c;font-weight:700;font-size:12px;">Punkty za zwycięzców grup: +' + winnerBonus + ' pkt</span></div>' : ''}
   </div>
 
   ${(totalAllPlayed > 0 || winnerBonus > 0) ? `
