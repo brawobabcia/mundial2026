@@ -1406,7 +1406,7 @@ async function loadStateFromSheets(){
   Object.keys(STATE.results).forEach(function(k){
     if(k.indexOf('GW_')===0){
       var g=k.replace('GW_','');
-      STATE.groupWinners[g]=STATE.results[k].winner;
+      STATE.groupWinners[g]=STATE.results[k].scoreHome;
       delete STATE.results[k];
     }
   });
