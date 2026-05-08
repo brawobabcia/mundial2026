@@ -2658,36 +2658,38 @@ ${sty}
 }
 
 // EKSPORT ZIP
+function rowsToCsv(rows) {
+  var lines = [];
+  for (var r=0; r<rows.length; r++) {
+    var cells = [];
+    for (var c=0; c<rows[r].length; c++) {
+      var val = String(rows[r][c] == null ? '' : rows[r][c]);
+      if (val.indexOf(',') > -1 || val.indexOf('"') > -1) {
+        val = '"' + val.replace(/"/g, '""') + '"';
+      }
+      cells.push(val);
+    }
+    lines.push(cells.join(','));
+  }
+  return lines.join('\r\n');
+}
+
 async function exportData() {
   showLoader('Eksportowanie danych...');
   try {
     var now = new Date();
     var date = now.toISOString().slice(0,10) + '_' + now.toTimeString().slice(0,5).replace(':','-');
-    var sheets = [
-      {name:SHN.USERS,   range:'!A1:E1000',   file:'Uzytkownicy'},
-      {name:SHN.PICKS,   range:'!A1:F100000', file:'Typy'},
-      {name:SHN.RESULTS, range:'!A1:C1000',   file:'Wyniki'},
-      {name:SHN.WINNERS, range:'!A1:C1000',   file:'Zwyciezcy'},
-      {name:SHN.MATCHES, range:'!A1:G1000',   file:'Mecze'}
-    ];
+    var results = await Promise.all([
+      sgGet(SHN.USERS   + '!A1:E1000'),
+      sgGet(SHN.PICKS   + '!A1:F100000'),
+      sgGet(SHN.RESULTS + '!A1:C1000'),
+      sgGet(SHN.WINNERS + '!A1:C1000'),
+      sgGet(SHN.MATCHES + '!A1:G1000')
+    ]);
+    var names = ['Uzytkownicy', 'Typy', 'Wyniki', 'Zwyciezcy', 'Mecze'];
     var zip = new JSZip();
-    for (var i=0; i<sheets.length; i++) {
-      var s = sheets[i];
-      var rows = await sgGet(s.name + s.range);
-      var lines = [];
-      for (var r=0; r<rows.length; r++) {
-        var cells = [];
-        for (var c=0; c<rows[r].length; c++) {
-          var val = String(rows[r][c] == null ? '' : rows[r][c]);
-          if (val.indexOf(',') > -1 || val.indexOf('"') > -1) {
-            val = '"' + val.replace(/"/g, '""') + '"';
-          }
-          cells.push(val);
-        }
-        lines.push(cells.join(','));
-      }
-      zip.file(s.file + '.csv', '﻿' + lines.join('
-'));
+    for (var i=0; i<names.length; i++) {
+      zip.file(names[i] + '.csv', '\uFEFF' + rowsToCsv(results[i]));
     }
     var blob = await zip.generateAsync({type:'blob'});
     var url = URL.createObjectURL(blob);
@@ -2699,13 +2701,12 @@ async function exportData() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     hideLoader();
-    toast('Pobrano backup ZIP!');
+    toast('Backup ZIP pobrany!');
   } catch(e) {
     hideLoader();
-    toast('Błąd: ' + e.message, 'error');
+    toast('Blad: ' + e.message, 'error');
   }
 }
-
 </script>
 </body>
 </html>
