@@ -1485,7 +1485,7 @@ async function saveUsersToSheets() {
   await sgPut(SHN.USERS + '!A2', rows);
 }
 
-async async function saveWinnersToSheets(userId) {
+async function saveWinnersToSheets(userId) {
   var all = await sgGet(SHN.WINNERS + '!A2:C1000');
   var otherRows = all.filter(function(r) { return r[0] !== userId; });
   var myRows = Object.entries(STATE.winners[userId] || {}).map(function(e) {
