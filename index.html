@@ -1072,6 +1072,20 @@ body { font-size: 16px; }
       </div>
     </div>
 
+    <!-- PAGE: Admin – Zwycięzcy grup -->
+    <div class="page" id="page-admin-winners">
+      <div class="page-header">
+        <div class="page-title">Zwycięzcy grup</div>
+        <div class="page-subtitle">Wpisz kto wygrał każdą grupę po zakończeniu fazy grupowej. System przyzna +2 pkt graczom którzy trafili.</div>
+      </div>
+      <div class="card">
+        <div class="winner-grid" id="admin-winners-grid"></div>
+        <div style="margin-top:20px;">
+          <button class="btn-submit-final" onclick="saveAdminWinners()"><i class="fas fa-save"></i> Zapisz zwycięzców grup</button>
+        </div>
+      </div>
+    </div>
+
     <!-- PAGE: Admin – Gracze -->
     <div class="page" id="page-admin-players">
       <div class="page-header">
@@ -1370,7 +1384,7 @@ async function ensureSheets(){
     }
   }
 }
-let STATE={users:[],picks:{},submitted:{},results:{},winners:{},matchOverrides:{}};
+let STATE={users:[],picks:{},submitted:{},results:{},winners:{},matchOverrides:{},groupWinners:{}};
 
 async function loadStateFromSheets(){
   showLoader('Łączenie z Google Sheets...');
@@ -1387,6 +1401,15 @@ async function loadStateFromSheets(){
   wR.forEach(function(r){if(!STATE.winners[r[0]])STATE.winners[r[0]]={};STATE.winners[r[0]][r[1]]=r[2];});
   STATE.matchOverrides={};
   mR.forEach(function(r){STATE.matchOverrides[r[0]]={home:r[1],away:r[2],date:r[3],time:r[4],venue:r[5],city:r[6]};});
+  // Load admin group winners from Results sheet (stored as special rows with matchId='GW_X')
+  STATE.groupWinners={};
+  Object.keys(STATE.results).forEach(function(k){
+    if(k.indexOf('GW_')===0){
+      var g=k.replace('GW_','');
+      STATE.groupWinners[g]=STATE.results[k].winner;
+      delete STATE.results[k];
+    }
+  });
   hideLoader();
 }
 // ── BEZPIECZNY ZAPIS — nigdy nie czyści całego arkusza ──
@@ -1589,6 +1612,7 @@ function initApp() {
     { icon:'fa-check-circle', label:'Wpisz wyniki meczów', page:'admin-results' },
     { icon:'fa-calendar-alt', label:'Harmonogram meczów', page:'admin-schedule' },
     { icon:'fa-user-cog', label:'Zarządzaj graczami', page:'admin-players' },
+    { icon:'fa-crown', label:'Zwycięzcy grup', page:'admin-winners' },
     { icon:'fa-history', label:'Kopia zapasowa', page:'admin-backup' },
   ];
   let html = '<div class="nav-section">Menu gracza</div>';
@@ -1645,6 +1669,7 @@ function showPage(page) {
   if (page === 'admin-results') renderAdminMatches();
   if (page === 'admin-schedule') renderAdminSchedule();
   if (page === 'admin-players') refreshAndRender(renderPlayersAdmin);
+  if (page === 'admin-winners') renderAdminWinners();
   if (page === 'admin-backup') loadBackupData();
 }
 
@@ -1723,10 +1748,16 @@ function getPlayerStats(userId) {
     total += pts;
     if (counts[pts] !== undefined) counts[pts]++;
   });
-  // winners bonus: 2pts each
-  const winners = STATE.winners[userId] || {};
-  // (placeholder — winner validation would need final group standings)
-  return { total, counts };
+  // +2 pkt za każdego trafionego zwycięzcę grupy
+  const playerWinners = STATE.winners[userId] || {};
+  var winnerBonus = 0;
+  Object.keys(STATE.groupWinners).forEach(function(g) {
+    if (playerWinners[g] && playerWinners[g] === STATE.groupWinners[g]) {
+      winnerBonus += 2;
+    }
+  });
+  total += winnerBonus;
+  return { total, counts, winnerBonus };
 }
 function toast(msg, type='success') {
   const el = document.getElementById('toast');
@@ -2026,6 +2057,7 @@ function renderRankings() {
         <span class="pts-pill p7">${p.counts[7]||0}</span>
         <span class="pts-pill p3">${p.counts[3]||0}</span>
         <span class="pts-pill p1">${p.counts[1]||0}</span>
+        ${p.winnerBonus>0 ? `<span class="pts-pill" style="background:rgba(255,215,0,0.2);color:#ffd700;">+${p.winnerBonus} zw.</span>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -2507,13 +2539,23 @@ function printPicks() {
       </div>`;
   });
 
+  // Winner bonus
+  var winnerBonus = 0;
+  Object.keys(STATE.groupWinners).forEach(function(g) {
+    if (winners[g] && winners[g] === STATE.groupWinners[g]) winnerBonus += 2;
+  });
+  totalAllPts += winnerBonus;
+
   // Winners section
   let winnersHTML = '<div class="winners-grid">';
   Object.keys(GROUPS).forEach(function(g) {
+    var isCorrect = STATE.groupWinners[g] && winners[g] === STATE.groupWinners[g];
+    var isWrong = STATE.groupWinners[g] && winners[g] && winners[g] !== STATE.groupWinners[g];
     winnersHTML += `
       <div class="winner-cell">
         <div class="winner-group">Zwycięzca grupy ${g}</div>
-        <div class="winner-name">${winners[g] || '—'}</div>
+        <div class="winner-name" style="${isCorrect?'color:#4caf7d':isWrong?'color:#e05555':''}">${winners[g] || '—'} ${isCorrect?'✓':isWrong?'✗':''}</div>
+        ${STATE.groupWinners[g] ? `<div style="font-size:7px;color:#8899bb;">Faktyczny: ${STATE.groupWinners[g]}</div>` : ''}
       </div>`;
   });
   winnersHTML += '</div>';
@@ -2663,11 +2705,11 @@ ${sty}
     ${winnersHTML}
   </div>
 
-  ${totalAllPlayed > 0 ? `
+  ${(totalAllPlayed > 0 || winnerBonus > 0) ? `
   <div class="total-summary">
     <div class="total-label">ŁĄCZNA SUMA PUNKTÓW ZA FAZĘ GRUPOWĄ</div>
     <div class="total-pts">${totalAllPts} pkt</div>
-    <div class="total-sub">${totalAllPlayed} rozegranych meczów z 72</div>
+    <div class="total-sub">${totalAllPlayed} meczów · zwycięzcy grup: +${winnerBonus} pkt</div>
   </div>` : ''}
 
   <div class="footer">Mundial 2026 — Karta typowania gracza ${currentUser.name} | Wygenerowano ${now.toLocaleDateString('pl-PL')}</div>
@@ -2732,6 +2774,48 @@ async function exportData() {
   } catch(e) {
     hideLoader();
     toast('Blad eksportu: ' + e.message, 'error');
+  }
+}
+
+// ── ADMIN: ZWYCIĘZCY GRUP ──
+function renderAdminWinners() {
+  var grid = document.getElementById('admin-winners-grid');
+  if (!grid) return;
+  grid.innerHTML = Object.keys(GROUPS).map(function(g) {
+    var current = STATE.groupWinners[g] || '';
+    var opts = GROUPS[g].teams.map(function(t) {
+      return '<option value="' + t + '" ' + (current===t?'selected':'') + '>' + t + '</option>';
+    }).join('');
+    return '<div class="winner-pick">' +
+      '<label><i class="fas fa-crown" style="color:var(--gold-dim);font-size:10px;"></i> Zwycięzca grupy ' + g + '</label>' +
+      '<select id="admin-gw-' + g + '">' +
+      '<option value="">-- wybierz --</option>' + opts +
+      '</select></div>';
+  }).join('');
+}
+
+async function saveAdminWinners() {
+  Object.keys(GROUPS).forEach(function(g) {
+    var sel = document.getElementById('admin-gw-' + g);
+    if (sel && sel.value) STATE.groupWinners[g] = sel.value;
+    else delete STATE.groupWinners[g];
+  });
+  // Save to Results sheet as special GW_ rows
+  showLoader('Zapisywanie zwycięzców grup...');
+  try {
+    // Load existing results, remove old GW_ entries, add new ones
+    var allResults = await sgGet(SHN.RESULTS + '!A2:C1000');
+    var cleaned = allResults.filter(function(r){ return r[0].indexOf('GW_') !== 0; });
+    Object.keys(STATE.groupWinners).forEach(function(g) {
+      if (STATE.groupWinners[g]) cleaned.push(['GW_'+g, STATE.groupWinners[g], '']);
+    });
+    await sgClear(SHN.RESULTS + '!A2:C1000');
+    if (cleaned.length) await sgPut(SHN.RESULTS + '!A2', cleaned);
+    hideLoader();
+    toast('Zwycięzcy grup zapisani!');
+  } catch(e) {
+    hideLoader();
+    toast('Błąd: ' + e.message, 'error');
   }
 }
 
