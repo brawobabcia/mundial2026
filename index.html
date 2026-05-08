@@ -2551,12 +2551,14 @@ function printPicks() {
   Object.keys(GROUPS).forEach(function(g) {
     var isCorrect = STATE.groupWinners[g] && winners[g] === STATE.groupWinners[g];
     var isWrong = STATE.groupWinners[g] && winners[g] && winners[g] !== STATE.groupWinners[g];
-    winnersHTML += `
-      <div class="winner-cell">
-        <div class="winner-group">Zwycięzca grupy ${g}</div>
-        <div class="winner-name" style="${isCorrect?'color:#4caf7d':isWrong?'color:#e05555':''}">${winners[g] || '—'} ${isCorrect?'✓':isWrong?'✗':''}</div>
-        ${STATE.groupWinners[g] ? `<div style="font-size:7px;color:#8899bb;">Faktyczny: ${STATE.groupWinners[g]}</div>` : ''}
-      </div>`;
+    var nameColor = isCorrect ? 'color:#4caf7d' : (isWrong ? 'color:#e05555' : '');
+    var checkMark = isCorrect ? ' ✓' : (isWrong ? ' ✗' : '');
+    var faktyczny = STATE.groupWinners[g] ? '<div style="font-size:7px;color:#8899bb;">Faktyczny: ' + STATE.groupWinners[g] + '</div>' : '';
+    winnersHTML += '<div class="winner-cell">' +
+      '<div class="winner-group">Zwycięzca grupy ' + g + '</div>' +
+      '<div class="winner-name" style="' + nameColor + '">' + (winners[g] || '—') + checkMark + '</div>' +
+      faktyczny +
+      '</div>';
   });
   winnersHTML += '</div>';
 
