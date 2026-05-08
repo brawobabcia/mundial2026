@@ -1105,6 +1105,9 @@ body { font-size: 16px; }
           </select>
         </div>
         <div id="admin-edit-picks-container"></div>
+        <div style="margin-top:16px;">
+          <button class="btn-save" onclick="adminSavePicks()"><i class="fas fa-save"></i> Zapisz typy gracza</button>
+        </div>
       </div>
     </div>
 
@@ -1459,7 +1462,7 @@ async function saveUsersToSheets() {
   await sgPut(SHN.USERS + '!A2', rows);
 }
 
-async function saveWinnersToSheets(userId) {
+async async function saveWinnersToSheets(userId) {
   var all = await sgGet(SHN.WINNERS + '!A2:C1000');
   var otherRows = all.filter(function(r) { return r[0] !== userId; });
   var myRows = Object.entries(STATE.winners[userId] || {}).map(function(e) {
@@ -1894,7 +1897,12 @@ async function savePicks(){
   var warn = validatePicks(false);
   if (warn) { toast(warn, 'error'); return; }
   showLoader('Zapisywanie...');
-  try{await savePicksToSheets(currentUser.id);hideLoader();toast('Typy zapisane!');}
+  try{
+    await savePicksToSheets(currentUser.id);
+    await saveWinnersToSheets(currentUser.id);
+    hideLoader();
+    toast('Typy i zwycięzcy grup zapisani!');
+  }
   catch(e){hideLoader();toast('Błąd: '+e.message,'error');}
 }
 
@@ -1933,7 +1941,14 @@ function confirmSubmit() {
 async function finalSubmit(){
   STATE.submitted[currentUser.id]=true;
   showLoader('Zatwierdzanie...');
-  try{await savePicksToSheets(currentUser.id);hideLoader();closeModal('confirm-submit-modal');toast('Typy zatwierdzone!');renderMyPicksHeader();}
+  try{
+    await savePicksToSheets(currentUser.id);
+    await saveWinnersToSheets(currentUser.id);
+    hideLoader();
+    closeModal('confirm-submit-modal');
+    toast('Typy zatwierdzone!');
+    renderMyPicksHeader();
+  }
   catch(e){hideLoader();toast('Błąd: '+e.message,'error');}
 }
 
@@ -2166,6 +2181,19 @@ function renderPlayersAdmin() {
       </td>
     </tr>`;
   }).join('');
+}
+
+async function adminSavePicks() {
+  if (!adminEditingPlayerId) return;
+  showLoader('Zapisywanie typów gracza...');
+  try {
+    await savePicksToSheets(adminEditingPlayerId);
+    hideLoader();
+    toast('Typy gracza zapisane!');
+  } catch(e) {
+    hideLoader();
+    toast('Błąd: ' + e.message, 'error');
+  }
 }
 
 function adminEditPicks(userId) {
