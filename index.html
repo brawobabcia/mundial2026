@@ -1488,13 +1488,20 @@ async function saveUsersToSheets() {
 async function saveWinnersToSheets(userId) {
   var all = await sgGet(SHN.WINNERS + '!A2:C1000');
   var otherRows = all.filter(function(r) { return r[0] !== userId; });
-  var myRows = Object.entries(STATE.winners[userId] || {}).map(function(e) {
+  var myWinners = STATE.winners[userId] || {};
+  // If user has no winners in memory but has them in sheets, keep sheets data
+  var existingMyRows = all.filter(function(r) { return r[0] === userId; });
+  var myRows;
+  if (Object.keys(myWinners).length === 0 && existingMyRows.length > 0) {
+    // Don't overwrite existing data with empty
+    return;
+  }
+  myRows = Object.entries(myWinners).map(function(e) {
     return [userId, e[0], e[1]];
   });
   var newRows = otherRows.concat(myRows);
-  if (newRows.length === 0) return;
   await sgClear(SHN.WINNERS + '!A2:C1000');
-  await sgPut(SHN.WINNERS + '!A2', newRows);
+  if (newRows.length) await sgPut(SHN.WINNERS + '!A2', newRows);
 }
 
 async function saveMatchOverrideToSheets(matchId) {
@@ -1930,9 +1937,11 @@ async function savePicks(){
   showLoader('Zapisywanie...');
   try{
     await savePicksToSheets(currentUser.id);
-    await saveWinnersToSheets(currentUser.id);
+    if (Object.keys(STATE.winners[currentUser.id] || {}).length > 0) {
+      await saveWinnersToSheets(currentUser.id);
+    }
     hideLoader();
-    toast('Typy i zwycięzcy grup zapisani!');
+    toast('Typy zapisane!');
   }
   catch(e){hideLoader();toast('Błąd: '+e.message,'error');}
 }
