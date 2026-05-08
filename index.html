@@ -2679,14 +2679,12 @@ async function exportData() {
       var csv = rows.map(function(row) {
         return row.map(function(cell) {
           var c = String(cell == null ? '' : cell);
-          if (c.indexOf(',') > -1 || c.indexOf('"') > -1 || c.indexOf('
-') > -1) {
+          if (c.indexOf(',') > -1 || c.indexOf('"') > -1 || c.indexOf('\n') > -1) {
             c = '"' + c.replace(/"/g, '""') + '"';
           }
           return c;
         }).join(',');
-      }).join('
-');
+      }).join('\n');
 
       var blob = new Blob(['﻿' + csv], {type: 'text/csv;charset=utf-8'});
       var url = URL.createObjectURL(blob);
