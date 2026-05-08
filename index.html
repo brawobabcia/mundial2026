@@ -2673,7 +2673,6 @@ function rowsToCsv(rows) {
   }
   return lines.join('\r\n');
 }
-
 async function exportData() {
   showLoader('Eksportowanie danych...');
   try {
@@ -2704,9 +2703,10 @@ async function exportData() {
     toast('Backup ZIP pobrany!');
   } catch(e) {
     hideLoader();
-    toast('Blad: ' + e.message, 'error');
+    toast('Blad eksportu: ' + e.message, 'error');
   }
 }
+
 </script>
 </body>
 </html>
