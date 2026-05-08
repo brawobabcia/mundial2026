@@ -1331,7 +1331,7 @@ const SHEET_ID='1GsL9mSfdrTHsn74950QtV5UCRQgo85Ad8oUQyTKkPUs';
 const SA_EMAIL='mundial2026@psychic-nuance-452512-t1.iam.gserviceaccount.com';
 const SA_KEY_B64='MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC45UJeQm9H48PxZ/45omMNliS0cJKtH3fh1H5y0m5oD/bLjee473h91e8Gsk+TFYRqi4vbk0xU/1j8Yv5kw5oHF/ocHDzKoEoqcr226mK83xeaXJqaXh4dSf0aOQfe7GaltUR+22IcpemxYKKkvh9WtVNYv22N1TnEeWBtDy9rbgN39AhN60U5CozlWht6VKO2cEgHhrEOWAKrZKsUq5fovEInyCAw6ZJt6wy2jFREYesv+8eTMa5HyLwAZyhf33a5H28fNptT5KePkSH1ymi8Dng1veg8dNUWo5RcYVSHFXlXwlngKpalbN9bNuETuUznCsH6RDj5W9n+SaGIVCcJAgMBAAECggEALD+RdoVnpEi559f/W0OleObpudUHBS92vTDhYhFCIt1PLr+zKOsGZvb/0RZzPLv1iJoEynOh3OWPIjd+shatke0HChsn4UYi+a2kAVZucszh FSv8Q90qT9AZJmFnpM3mctnCnqlZ/YknOC/sPIjTbyjN3XtSeJMC1CZIEVGFA6xULsCOqTYOAN8edY9dzGjYmt+X8zyq4KJyyj6O56rbzL6BeT8dBQ6qu4e/PsAtoaPa0Hr0w9yzRizibCsaFGujCMlGR/xVh67iiwEAu7+E/imOGBtSm9jdlPoKsjK7vKv8uAAy9Fj2V+9dQTmL1koScSgwMzt7MAbQOuioeZAaEQKBgQDhDSW+bjrBUrA5W5Nx1pYFOKyrufi3ajVIJEA3iAoskk6afR40A/bZCT0ShjJSjwOlNWC5zZgtSkh80pCL5Te5/x2LGgZYkJqCnPD5+1mBaam5bqyZ1W80iuJ/UF8Hohj2M5Aux85wYzDJy5oK4FUf12I+nVWzxUedw0FSRTQqywKBgQDSUnDWFjHNG1l9DRvPgtxf4hxbr3qMt5H9w8Y4S6OEak3SoZQ1n5n/zgQt7DLkXSNPPpvAbFMzgo7tWqrUose86mHAOJgL2qgPPaaPDt9cfS6M//oVjIG4Fdj7xqXzEN2K2IKv80bi7j6ccH04IzvQsGxcAL+JprHXAPnCl6pW+wKBgQCGobzgrUTM/lCaH6SXR4471WnG2dxmrUzuuXEJR4L+oxAO76av62cy84nrmQhlx1Sg8svIm6vb/EJdGgKLDjdGN85OtuTw+qDUXlry0WD8QF/epMzwwnRidGuHSmdvQ5O3RaWNts5TAaPgNMMUmpuSDuGhH7JzdyOex34+X1QT/QKBgBuVSk0ZfhCLPLJEzNfrLqG4ksWHfwgDbzcbvNxXNyu/kVNFc52Qv+6ngy7OomIGwQG8kUqsKkFAJySD1pGqg42II6fFBFPRqmbNTBHI/owvsrI1RAQdeEm/O8TRaaQ2GwgBmyoeOra6TiXQLuv02vxkluF+C6Cu5vXun9LgdyuPAoGBALoC0EE6Yg2y03ufOhdBPSAWzUxG0f8QPCT/TMrhQcBxMQ1NYIivz9PPYz9mzQghvg8+nVANhruq1kYHQOgy8/Q+sOJNGxrrnkd9APXXLSvOW3QxV9tHQmIn0WZV415zYtNKoFORAdpxW41m9YBkdA7t9jjNwu135R0/hI/ssm66';
 const TOKEN_URI='https://oauth2.googleapis.com/token';
-const SHN={USERS:'Uzytkownicy',PICKS:'Typy',RESULTS:'Wyniki',WINNERS:'Zwyciezcy',MATCHES:'Mecze'};
+const SHN={USERS:'Uzytkownicy',PICKS:'Typy',RESULTS:'Wyniki',WINNERS:'Zwyciezcy',MATCHES:'Mecze',GW:'ZwyciezcyGrup'};
 let _tok=null,_tokExp=0;
 
 async function getToken(){
@@ -1380,6 +1380,7 @@ async function ensureSheets(){
       if(s===SHN.RESULTS)h=[['matchId','scoreHome','scoreAway']];
       if(s===SHN.WINNERS)h=[['userId','group','team']];
       if(s===SHN.MATCHES)h=[['matchId','home','away','date','time','venue','city']];
+      if(s===SHN.GW)h=[['group','winner']];
       if(h.length)await sgPut(s+'!A1',h);
     }
   }
@@ -1396,20 +1397,20 @@ async function loadStateFromSheets(){
   STATE.picks={};STATE.submitted={};
   pR.forEach(function(r){var uid=r[0],mid=r[1],sh=r[2],sa=r[3],ty=r[4],sub=r[5];if(!STATE.picks[uid])STATE.picks[uid]={};STATE.picks[uid][mid]={scoreHome:sh,scoreAway:sa,typs:ty?ty.split(',').filter(Boolean):[]};if(sub==='true')STATE.submitted[uid]=true;});
   STATE.results={};
-  rR.forEach(function(r){STATE.results[r[0]]={scoreHome:parseInt(r[1]),scoreAway:parseInt(r[2])};});
+  rR.forEach(function(r){
+    if(r[0] && r[0].indexOf('GW_')!==0){
+      STATE.results[r[0]]={scoreHome:parseInt(r[1]),scoreAway:parseInt(r[2])};
+    }
+  });
   STATE.winners={};
   wR.forEach(function(r){if(!STATE.winners[r[0]])STATE.winners[r[0]]={};STATE.winners[r[0]][r[1]]=r[2];});
   STATE.matchOverrides={};
   mR.forEach(function(r){STATE.matchOverrides[r[0]]={home:r[1],away:r[2],date:r[3],time:r[4],venue:r[5],city:r[6]};});
   // Load admin group winners from Results sheet (stored as special rows with matchId='GW_X')
+  // Load group winners from dedicated sheet
+  var gwR = await sgGet(SHN.GW+'!A2:B1000');
   STATE.groupWinners={};
-  Object.keys(STATE.results).forEach(function(k){
-    if(k.indexOf('GW_')===0){
-      var g=k.replace('GW_','');
-      STATE.groupWinners[g]=STATE.results[k].scoreHome;
-      delete STATE.results[k];
-    }
-  });
+  gwR.forEach(function(r){ if(r[0]&&r[1]) STATE.groupWinners[r[0]]=r[1]; });
   hideLoader();
 }
 // ── BEZPIECZNY ZAPIS — nigdy nie czyści całego arkusza ──
@@ -2811,17 +2812,11 @@ async function saveAdminWinners() {
     if (sel && sel.value) STATE.groupWinners[g] = sel.value;
     else delete STATE.groupWinners[g];
   });
-  // Save to Results sheet as special GW_ rows
   showLoader('Zapisywanie zwycięzców grup...');
   try {
-    // Load existing results, remove old GW_ entries, add new ones
-    var allResults = await sgGet(SHN.RESULTS + '!A2:C1000');
-    var cleaned = allResults.filter(function(r){ return r[0].indexOf('GW_') !== 0; });
-    Object.keys(STATE.groupWinners).forEach(function(g) {
-      if (STATE.groupWinners[g]) cleaned.push(['GW_'+g, STATE.groupWinners[g], '']);
-    });
-    await sgClear(SHN.RESULTS + '!A2:C1000');
-    if (cleaned.length) await sgPut(SHN.RESULTS + '!A2', cleaned);
+    var rows = Object.entries(STATE.groupWinners).map(function(e){ return [e[0], e[1]]; });
+    await sgClear(SHN.GW+'!A2:B1000');
+    if(rows.length) await sgPut(SHN.GW+'!A2', rows);
     hideLoader();
     toast('Zwycięzcy grup zapisani!');
   } catch(e) {
