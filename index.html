@@ -1669,7 +1669,7 @@ function showPage(page) {
   if (page === 'admin-results') renderAdminMatches();
   if (page === 'admin-schedule') renderAdminSchedule();
   if (page === 'admin-players') refreshAndRender(renderPlayersAdmin);
-  if (page === 'admin-winners') renderAdminWinners();
+  if (page === 'admin-winners') refreshAndRender(renderAdminWinners);
   if (page === 'admin-backup') loadBackupData();
 }
 
