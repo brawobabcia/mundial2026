@@ -2564,13 +2564,26 @@ function printPicks() {
     var nameColor = isCorrect ? 'color:#4caf7d' : (isWrong ? 'color:#e05555' : '');
     var checkMark = isCorrect ? ' ✓' : (isWrong ? ' ✗' : '');
     var faktyczny = STATE.groupWinners[g] ? '<div style="font-size:7px;color:#8899bb;">Faktyczny: ' + STATE.groupWinners[g] + '</div>' : '';
+    var pts = isCorrect ? 2 : 0;
+    var ptsBg = isCorrect ? '#4caf7d' : 'rgba(150,150,150,0.2)';
+    var ptsColor = isCorrect ? '#0a1628' : '#8899bb';
+    var ptsLabel = STATE.groupWinners[g] ? '<div style="margin-top:4px;display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;background:' + ptsBg + ';color:' + ptsColor + ';">' + pts + ' pkt</div>' : '';
     winnersHTML += '<div class="winner-cell">' +
       '<div class="winner-group">Zwycięzca grupy ' + g + '</div>' +
       '<div class="winner-name" style="' + nameColor + '">' + (winners[g] || '—') + checkMark + '</div>' +
       faktyczny +
+      ptsLabel +
       '</div>';
   });
   winnersHTML += '</div>';
+  // Summary row under winners
+  var winnersKnown = Object.keys(STATE.groupWinners).length > 0;
+  if (winnersKnown) {
+    winnersHTML += '<div style="background:#0a1628;border-top:1px solid rgba(201,168,76,0.3);padding:6px 10px;display:flex;justify-content:space-between;align-items:center;">' +
+      '<span style="font-size:9px;color:#8899bb;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Suma za zwycięzców grup:</span>' +
+      '<span style="background:#c9a84c;color:#0a1628;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;">' + winnerBonus + ' pkt</span>' +
+      '</div>';
+  }
 
   var sty = '<' + '/style>';
   const printHTML = `<!DOCTYPE html>
