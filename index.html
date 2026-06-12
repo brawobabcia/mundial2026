@@ -1007,7 +1007,10 @@ body { font-size: 16px; }
           <div class="page-title">Ranking i statystyki</div>
           <div class="page-subtitle">Tabela wyników i statystyki typowań wszystkich graczy</div>
         </div>
-        <button class="btn-save" onclick="downloadMatchInfographic()" style="border-color:var(--gold);color:var(--gold);margin-top:8px;"><i class="fas fa-futbol"></i> Następny mecz</button>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+          <select id="match-infographic-select" class="score-input" style="min-width:220px;padding:6px 10px;font-size:13px;"><option>Ładowanie...</option></select>
+          <button class="btn-save" onclick="downloadMatchInfographic()" style="border-color:var(--gold);color:var(--gold);"><i class="fas fa-futbol"></i> Infografika</button>
+        </div>
       </div>
       <div class="card" style="margin-bottom:20px;">
         <div class="card-title"><i class="fas fa-chart-bar"></i> Wykres punktów</div>
@@ -1574,6 +1577,7 @@ function showLoader(msg){
 function hideLoader(){var el=document.getElementById('global-loader');if(el)el.style.display='none';}
 
 let currentUser = null;
+var matchList = [];
 
 function getPositionColor(i, total) {
   if (i === 0) return '#FFD700';
@@ -2071,34 +2075,30 @@ function renderOthersPicks() {
 // PAGE: RANKINGS
 // ═══════════════════════════════════════════════════════
 function renderRankings() {
-  // Populate match selector sorted by group A1-L6
+  // Populate match selector - only once
   var sel = document.getElementById('match-infographic-select');
-  if (sel) {
-    var allMatches = [];
+  if (sel && matchList.length === 0) {
     var groupOrder = 'ABCDEFGHIJKL'.split('');
     groupOrder.forEach(function(g) {
       if (!GROUPS[g]) return;
       GROUPS[g].matches.forEach(function(rawM) {
         var m = getMatch(rawM.id);
         var dt = new Date(m.date + 'T' + m.time + ':00+02:00');
-        allMatches.push({id:m.id,home:m.home,away:m.away,date:m.date,time:m.time,venue:m.venue||'',city:m.city||'',group:g,datetime:dt});
+        matchList.push({id:m.id,home:m.home,away:m.away,date:m.date,time:m.time,venue:m.venue||'',city:m.city||'',group:g,datetime:dt});
       });
     });
     var now = new Date();
-    var nextIdx = 0;
-    // Find chronologically next match for default selection
-    var chronological = allMatches.slice().sort(function(a,b){return a.datetime-b.datetime;});
-    var nextMatch = chronological[chronological.length-1];
-    for (var i=0; i<chronological.length; i++) {
-      if (chronological[i].datetime > now) { nextMatch = chronological[i]; break; }
+    var nextId = matchList[matchList.length-1].id;
+    var chrono = matchList.slice().sort(function(a,b){return a.datetime-b.datetime;});
+    for (var i=0; i<chrono.length; i++) {
+      if (chrono[i].datetime > now) { nextId = chrono[i].id; break; }
     }
-    sel.innerHTML = allMatches.map(function(m) {
+    var months = ['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paz','lis','gru'];
+    sel.innerHTML = matchList.map(function(m) {
       var d = new Date(m.date + 'T12:00:00');
-      var months = ['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paz','lis','gru'];
       var label = m.id + ': ' + m.home + ' vs ' + m.away + ' (' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + m.time + ')';
-      return '<option value="' + m.id + '"' + (m.id===nextMatch.id?' selected':'') + '>' + label + '</option>';
+      return '<option value="' + m.id + '"' + (m.id===nextId?' selected':'') + '>' + label + '</option>';
     }).join('');
-    sel._matches = allMatches;
   }
 
   const players = STATE.users.filter(u => u.role === 'player' || u.role === 'admin');
@@ -2849,10 +2849,7 @@ function getNextMatch() {
 function downloadMatchInfographic() {
   var sel = document.getElementById('match-infographic-select');
   var matchId = sel ? sel.value : null;
-  var match = null;
-  if (matchId && sel._matches) {
-    match = sel._matches.find(function(m){ return m.id === matchId; });
-  }
+  var match = matchList.find(function(m){ return m.id === matchId; }) || null;
   if (!match) {
     var now = new Date();
     var allM = [];
