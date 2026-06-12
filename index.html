@@ -2158,7 +2158,18 @@ function renderRankings() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: {display:false},
-        tooltip: { callbacks: { label: function(ctx){ return ' '+ctx.raw+' pkt'; } } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var p = ranked[ctx.dataIndex];
+              var c = p.counts || {};
+              return [
+                ' ' + p.name + ' · ' + ctx.raw + ' pkt',
+                ' 10pkt: ' + (c[10]||0) + '  8pkt: ' + (c[8]||0) + '  7pkt: ' + (c[7]||0) + '  3pkt: ' + (c[3]||0) + '  1pkt: ' + (c[1]||0) + '  0pkt: ' + (c[0]||0)
+              ];
+            }
+          }
+        },
         datalabels: {
           anchor: 'end', align: 'end',
           color: '#c9a84c', font: {family:'Outfit', size:13, weight:'bold'},
