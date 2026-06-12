@@ -2785,91 +2785,104 @@ function drawRankingCanvas(ranked, W, H, title) {
   c.fillRect(0, 0, W, 8);
 
   // Title
-  var titleSize = Math.round(W * 0.042);
+  var titleSize = Math.round(W * 0.048);
   c.fillStyle = '#c9a84c';
-  c.font = 'bold ' + titleSize + 'px Arial';
+  c.font = 'bold ' + titleSize + 'px sans-serif';
   c.textAlign = 'center';
-  c.fillText('MUNDIAL 2026', W/2, titleSize + 18);
+  c.fillText('MUNDIAL 2026', W/2, titleSize + 22);
 
-  var subSize = Math.round(W * 0.022);
+  var subSize = Math.round(W * 0.026);
   c.fillStyle = '#8899bb';
-  c.font = subSize + 'px Arial';
-  c.fillText(title, W/2, titleSize + 18 + subSize + 8);
+  c.font = 'bold ' + subSize + 'px sans-serif';
+  c.fillText(title, W/2, titleSize + 22 + subSize + 10);
 
-  // Date
-  var dateSize = Math.round(W * 0.018);
+  var dateSize = Math.round(W * 0.019);
   c.fillStyle = '#556688';
-  c.font = dateSize + 'px Arial';
-  c.fillText(new Date().toLocaleDateString('pl-PL'), W/2, titleSize + 18 + subSize + 8 + dateSize + 6);
+  c.font = dateSize + 'px sans-serif';
+  c.fillText(new Date().toLocaleDateString('pl-PL'), W/2, titleSize + 22 + subSize + 10 + dateSize + 8);
 
   // Divider
-  var divY = titleSize + 18 + subSize + 8 + dateSize + 18;
-  c.strokeStyle = 'rgba(201,168,76,0.3)';
-  c.lineWidth = 1;
+  var divY = titleSize + 22 + subSize + 10 + dateSize + 22;
+  c.strokeStyle = 'rgba(201,168,76,0.4)';
+  c.lineWidth = 2;
   c.beginPath(); c.moveTo(40, divY); c.lineTo(W-40, divY); c.stroke();
 
   var topY = divY + 16;
-  var bottomY = H - 50;
+  var bottomY = H - 55;
   var availH = bottomY - topY;
   var n = ranked.length;
-  var barH = Math.floor(availH / n * 0.62);
+  var barH = Math.floor(availH / n * 0.65);
   var gap = Math.floor((availH - barH * n) / (n + 1));
   var maxPts = ranked[0].total || 1;
 
   var leftPad = Math.round(W * 0.04);
-  var nameW = Math.round(W * 0.28);
-  var posW = Math.round(W * 0.08);
-  var barLeft = leftPad + posW + nameW + 10;
-  var ptsW = Math.round(W * 0.18);
-  var barRight = W - leftPad - ptsW - 10;
+  var posW = Math.round(W * 0.09);
+  var nameW = Math.round(W * 0.30);
+  var ptsW = Math.round(W * 0.20);
+  var barLeft = leftPad + posW + nameW + 8;
+  var barRight = W - leftPad - ptsW - 8;
   var barAreaW = barRight - barLeft;
 
-  var nameSize = Math.min(Math.round(barH * 0.55), Math.round(W * 0.028));
-  var ptsSize = Math.min(Math.round(barH * 0.6), Math.round(W * 0.032));
-  var posSize = Math.min(Math.round(barH * 0.65), Math.round(W * 0.036));
+  var nameSize = Math.min(Math.round(barH * 0.52), Math.round(W * 0.030));
+  var ptsSize = Math.min(Math.round(barH * 0.56), Math.round(W * 0.034));
+  var posSize = Math.min(Math.round(barH * 0.60), Math.round(W * 0.038));
 
-  var posColors = ['#ffd700','#c0c0c0','#cd7f32'];
+  // Bar colors per position
+  function getBarColor(i) {
+    if (i === 0) return ['#FFD700', '#FFF176'];
+    if (i === 1) return ['#C0C0C0', '#E8E8E8'];
+    if (i === 2) return ['#8B4513', '#A0522D'];
+    if (i <= 5)  return ['#2a6fa8', '#3a8fcc'];
+    if (i <= 9)  return ['#2a7a5a', '#3a9a6a'];
+    return ['#5a4a8a', '#7a6aaa'];
+  }
+
+  function getPosColor(i) {
+    if (i === 0) return '#FFD700';
+    if (i === 1) return '#C0C0C0';
+    if (i === 2) return '#cd7f32';
+    return '#8899bb';
+  }
 
   ranked.forEach(function(p, i) {
     var y = topY + gap + i * (barH + gap);
-    var barW = Math.max(Math.round((p.total / maxPts) * barAreaW), 4);
+    var barW = Math.max(Math.round((p.total / maxPts) * barAreaW), 6);
+    var colors = getBarColor(i);
 
-    // Row bg
-    c.fillStyle = 'rgba(255,255,255,0.03)';
+    // Row background
+    c.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
     c.fillRect(leftPad, y, W - leftPad*2, barH);
 
-    // Bar bg
-    c.fillStyle = 'rgba(255,255,255,0.05)';
-    c.fillRect(barLeft, y + barH*0.2, barAreaW, barH*0.6);
+    // Bar background track
+    c.fillStyle = 'rgba(255,255,255,0.06)';
+    c.fillRect(barLeft, y + barH*0.22, barAreaW, barH*0.56);
 
-    // Bar fill
+    // Bar fill with gradient
     var grad = c.createLinearGradient(barLeft, 0, barLeft + barW, 0);
-    if (i === 0) { grad.addColorStop(0,'#c9a84c'); grad.addColorStop(1,'#f0c96a'); }
-    else if (i === 1) { grad.addColorStop(0,'#7db5f0'); grad.addColorStop(1,'#9dcaf0'); }
-    else if (i === 2) { grad.addColorStop(0,'#e8b84a'); grad.addColorStop(1,'#f0c96a'); }
-    else { grad.addColorStop(0,'rgba(201,168,76,0.35)'); grad.addColorStop(1,'rgba(201,168,76,0.55)'); }
+    grad.addColorStop(0, colors[0]);
+    grad.addColorStop(1, colors[1]);
     c.fillStyle = grad;
-    c.fillRect(barLeft, y + barH*0.2, barW, barH*0.6);
+    c.fillRect(barLeft, y + barH*0.22, barW, barH*0.56);
 
-    // Position
-    c.fillStyle = i < 3 ? posColors[i] : '#556688';
-    c.font = 'bold ' + posSize + 'px Arial';
+    // Position number
+    c.fillStyle = getPosColor(i);
+    c.font = 'bold ' + posSize + 'px sans-serif';
     c.textAlign = 'center';
-    c.fillText((i+1)+'.', leftPad + posW/2, y + barH*0.68);
+    c.fillText((i+1)+'.', leftPad + posW/2, y + barH*0.70);
 
     // Name
     c.fillStyle = '#f0f4ff';
-    c.font = 'bold ' + nameSize + 'px Arial';
+    c.font = 'bold ' + nameSize + 'px sans-serif';
     c.textAlign = 'left';
-    var maxChars = Math.floor(nameW / (nameSize * 0.6));
+    var maxChars = Math.floor(nameW / (nameSize * 0.58));
     var name = p.name.length > maxChars ? p.name.slice(0, maxChars-1)+'.' : p.name;
-    c.fillText(name, leftPad + posW + 4, y + barH*0.68);
+    c.fillText(name, leftPad + posW + 4, y + barH*0.70);
 
     // Points
-    c.fillStyle = i < 3 ? posColors[i] : '#c9a84c';
-    c.font = 'bold ' + ptsSize + 'px Arial';
+    c.fillStyle = getPosColor(i) === '#8899bb' ? '#c9a84c' : getPosColor(i);
+    c.font = 'bold ' + ptsSize + 'px sans-serif';
     c.textAlign = 'right';
-    c.fillText(p.total + ' pkt', W - leftPad - 4, y + barH*0.68);
+    c.fillText(p.total + ' pkt', W - leftPad - 4, y + barH*0.70);
   });
 
   // Gold bottom bar
@@ -2878,9 +2891,9 @@ function drawRankingCanvas(ranked, W, H, title) {
 
   // Footer
   c.fillStyle = '#334455';
-  c.font = Math.round(W*0.016) + 'px Arial';
+  c.font = Math.round(W*0.018) + 'px sans-serif';
   c.textAlign = 'center';
-  c.fillText('brawobabcia.github.io/mundial2026', W/2, H - 16);
+  c.fillText('brawobabcia.github.io/mundial2026', W/2, H - 18);
 
   return canvas;
 }
@@ -2897,28 +2910,47 @@ async function downloadRankingPNG(mode) {
         return a.name.localeCompare(b.name,'pl');
       });
 
-    var canvas, filename;
+    if (!ranked.length) { hideLoader(); toast('Brak danych.','error'); return; }
+
+    var subset, W, H, title, filename;
+
     if (mode === 'top5') {
-      canvas = drawRankingCanvas(ranked.slice(0,5), 1080, 1080, 'TOP 5 · Ranking fazy grupowej');
+      subset = ranked.slice(0, 5);
+      W = 1080; H = 1080;
+      title = 'TOP 5 · Ranking fazy grupowej';
       filename = 'Mundial2026_TOP5.png';
     } else if (mode === 'last5') {
-      var last = ranked.slice(-5).reverse();
-      canvas = drawRankingCanvas(last, 1080, 1080, 'LAST 5 · Ranking fazy grupowej');
+      subset = ranked.slice(Math.max(0, ranked.length-5)).reverse();
+      W = 1080; H = 1080;
+      title = 'LAST 5 · Ranking fazy grupowej';
       filename = 'Mundial2026_LAST5.png';
     } else {
-      canvas = drawRankingCanvas(ranked, 1080, 1920, 'Ranking fazy grupowej · ' + ranked.length + ' graczy');
+      subset = ranked;
+      W = 1080; H = 1920;
+      title = 'Ranking fazy grupowej · ' + ranked.length + ' graczy';
       filename = 'Mundial2026_Ranking.png';
     }
 
-    hideLoader();
+    var canvas = drawRankingCanvas(subset, W, H, title);
+    var dataUrl = canvas.toDataURL('image/png');
+
+    if (!dataUrl || dataUrl === 'data:,') {
+      hideLoader();
+      toast('Blad generowania obrazu.','error');
+      return;
+    }
+
     var a = document.createElement('a');
     a.download = filename;
-    a.href = canvas.toDataURL('image/png');
+    a.href = dataUrl;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    hideLoader();
     toast('PNG pobrany!');
   } catch(e) {
     hideLoader();
-    toast('Błąd: '+e.message, 'error');
+    toast('Blad: '+e.message, 'error');
     console.error(e);
   }
 }
