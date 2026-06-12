@@ -1011,7 +1011,7 @@ body { font-size: 16px; }
         <div class="chart-wrap"><canvas id="ranking-chart"></canvas></div>
       </div>
       <div class="card">
-        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><span><i class="fas fa-list-ol"></i> Tabela rankingowa</span><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn-sm" onclick="downloadRankingPNG('all')" style="border-color:var(--gold);color:var(--gold);"><i class="fas fa-download"></i> Wszyscy</button><button class="btn-sm" onclick="downloadRankingPNG('top5')" style="border-color:#4caf7d;color:#4caf7d;"><i class="fas fa-trophy"></i> TOP 5</button><button class="btn-sm" onclick="downloadRankingPNG('last5')" style="border-color:#e05555;color:#e05555;"><i class="fas fa-arrow-down"></i> LAST 5</button></div></div>
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><span><i class="fas fa-list-ol"></i> Tabela rankingowa</span><div id="ranking-png-btns" style="display:none;gap:6px;flex-wrap:wrap;"><button class="btn-sm" onclick="downloadRankingPNG('all')" style="border-color:var(--gold);color:var(--gold);"><i class="fas fa-download"></i> Wszyscy</button><button class="btn-sm" onclick="downloadRankingPNG('top5')" style="border-color:#4caf7d;color:#4caf7d;"><i class="fas fa-trophy"></i> TOP 5</button><button class="btn-sm" onclick="downloadRankingPNG('last5')" style="border-color:#e05555;color:#e05555;"><i class="fas fa-arrow-down"></i> LAST 5</button></div></div>
         <div style="overflow-x:auto;">
         <table class="rankings-table" id="rankings-table">
           <thead>
@@ -1571,6 +1571,21 @@ function showLoader(msg){
 function hideLoader(){var el=document.getElementById('global-loader');if(el)el.style.display='none';}
 
 let currentUser = null;
+
+function getPositionColor(i, total) {
+  if (i === 0) return '#FFD700';
+  if (i === 1) return '#C0C0C0';
+  if (i === 2) return '#8B4513';
+  if (i <= 9)  return '#2d6b4a';
+  // positions 10+ (index 10-18): dark red with increasing intensity
+  var redStart = 10;
+  var redCount = Math.max(total - redStart, 1);
+  var t = (i - redStart) / (redCount - 1 || 1); // 0 = faded, 1 = intense
+  var r = Math.round(80 + t * 110);   // 80 -> 190
+  var g = Math.round(20 - t * 10);    // 20 -> 10
+  var b = Math.round(20 - t * 10);    // 20 -> 10
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
 let rankingChart = null;
 let adminEditingPlayerId = null;
 
@@ -1659,6 +1674,7 @@ function initApp() {
   document.getElementById('mobile-bottom-nav').style.display = '';
   if (currentUser.role === 'admin') {
     document.getElementById('mbn-admin').style.display = 'flex';
+    document.getElementById('ranking-png-btns').style.display = 'flex';
   }
 }
 
@@ -2094,14 +2110,7 @@ function renderRankings() {
       labels: ranked.map(p => p.name),
       datasets: [{
         data: ranked.map(p => p.total),
-        backgroundColor: ranked.map(function(_, i) {
-          if(i===0) return '#FFD700';
-          if(i===1) return '#C0C0C0';
-          if(i===2) return '#8B4513';
-          if(i<=5)  return '#2a6fa8';
-          if(i<=9)  return '#2a7a5a';
-          return '#5a4a8a';
-        }),
+        backgroundColor: ranked.map(function(_, i) { return getPositionColor(i, ranked.length); }),
         borderColor: 'transparent',
         borderRadius: 6,
       }]
@@ -2835,13 +2844,9 @@ function drawRankingCanvas(ranked, W, H, title) {
   var posSize = Math.min(Math.round(barH * 0.60), Math.round(W * 0.038));
 
   // Bar colors per position
-  function getBarColor(i) {
-    if (i === 0) return ['#FFD700', '#FFF176'];
-    if (i === 1) return ['#C0C0C0', '#E8E8E8'];
-    if (i === 2) return ['#8B4513', '#A0522D'];
-    if (i <= 5)  return ['#2a6fa8', '#3a8fcc'];
-    if (i <= 9)  return ['#2a7a5a', '#3a9a6a'];
-    return ['#5a4a8a', '#7a6aaa'];
+  function getBarColor(i, total) {
+    var base = getPositionColor(i, total);
+    return [base, base];
   }
 
   function getPosColor(i) {
@@ -2854,7 +2859,7 @@ function drawRankingCanvas(ranked, W, H, title) {
   ranked.forEach(function(p, i) {
     var y = topY + gap + i * (barH + gap);
     var barW = Math.max(Math.round((p.total / maxPts) * barAreaW), 6);
-    var colors = getBarColor(i);
+    var colors = getBarColor(i, n);
 
     // Row background
     c.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
