@@ -2866,7 +2866,7 @@ function downloadMatchInfographic() {
   }
   if (!match) { toast('Brak meczu.','error'); return; }
 
-  var W=800, H=1000;
+  var W=800, H=1100;
   var cv=document.createElement('canvas');
   cv.width=W; cv.height=H;
   var c=cv.getContext('2d');
@@ -2964,24 +2964,24 @@ function downloadMatchInfographic() {
   bottomY+=14;
 
   // Two columns: left=score freq, right=TOP5
-  var leftX=30, rightX=W/2+10;
-  var colW=W/2-50;
+  var leftX=30, rightX=W/2+20;
+  var rowH=26, headerSize=13, rowSize=16;
 
   // LEFT: score frequency header
-  c.fillStyle='#c9a84c'; c.font='bold 11px sans-serif'; c.textAlign='left';
+  c.fillStyle='#c9a84c'; c.font='bold '+headerSize+'px sans-serif'; c.textAlign='left';
   c.fillText('ILE GRACZY TYPUJE DANY WYNIK', leftX, bottomY);
-  
+
   // LEFT: score freq rows
-  sortedScores.slice(0,8).forEach(function(e,i){
-    var ry=bottomY+16+i*18;
-    c.fillStyle='#f0f4ff'; c.font='bold 13px sans-serif'; c.textAlign='left';
+  sortedScores.slice(0,7).forEach(function(e,i){
+    var ry=bottomY+rowH+i*rowH;
+    c.fillStyle='#f0f4ff'; c.font='bold '+rowSize+'px sans-serif'; c.textAlign='left';
     c.fillText(e[0], leftX, ry);
-    c.fillStyle='#8899bb'; c.font='12px sans-serif'; c.textAlign='left';
-    c.fillText(e[1]+' '+(e[1]===1?'gracz':'graczy'), leftX+60, ry);
+    c.fillStyle='#8899bb'; c.font=rowSize+'px sans-serif'; c.textAlign='left';
+    c.fillText(e[1]+' '+(e[1]===1?'gracz':'graczy'), leftX+70, ry);
   });
 
   // RIGHT: TOP 5 header
-  c.fillStyle='#c9a84c'; c.font='bold 11px sans-serif'; c.textAlign='left';
+  c.fillStyle='#c9a84c'; c.font='bold '+headerSize+'px sans-serif'; c.textAlign='left';
   c.fillText('AKTUALNY TOP 5', rightX, bottomY);
 
   // RIGHT: TOP 5 rows
@@ -2995,11 +2995,11 @@ function downloadMatchInfographic() {
     });
   var posColors=['#FFD700','#C0C0C0','#cd7f32','#8899bb','#8899bb'];
   ranked.slice(0,5).forEach(function(p,i){
-    var ry=bottomY+16+i*18;
-    c.fillStyle=posColors[i]; c.font='bold 12px sans-serif'; c.textAlign='left';
+    var ry=bottomY+rowH+i*rowH;
+    c.fillStyle=posColors[i]; c.font='bold '+rowSize+'px sans-serif'; c.textAlign='left';
     c.fillText((i+1)+'.', rightX, ry);
-    c.fillStyle='#f0f4ff'; c.font='bold 12px sans-serif';
-    c.fillText(p.name, rightX+24, ry);
+    c.fillStyle='#f0f4ff'; c.font='bold '+rowSize+'px sans-serif';
+    c.fillText(p.name, rightX+28, ry);
     c.fillStyle='#c9a84c'; c.textAlign='right';
     c.fillText(p.total+' pkt', W-30, ry);
   });
