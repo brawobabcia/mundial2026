@@ -1007,7 +1007,7 @@ body { font-size: 16px; }
           <div class="page-title">Ranking i statystyki</div>
           <div class="page-subtitle">Tabela wyników i statystyki typowań wszystkich graczy</div>
         </div>
-        <button class="btn-save" onclick="downloadMatchInfographic()" style="border-color:var(--gold);color:var(--gold);margin-top:8px;"><i class="fas fa-futbol"></i> Infografika meczu</button>
+        <button class="btn-save" onclick="downloadMatchInfographic()" style="border-color:var(--gold);color:var(--gold);margin-top:8px;"><i class="fas fa-futbol"></i> Następny mecz</button>
       </div>
       <div class="card" style="margin-bottom:20px;">
         <div class="card-title"><i class="fas fa-chart-bar"></i> Wykres punktów</div>
@@ -2798,21 +2798,48 @@ ${sty}
 function getNextMatch() {
   var now = new Date();
   var allMatches = [];
-  Object.entries(GROUPS).forEach(function(entry) {
-    var g = entry[0], gdata = entry[1];
-    gdata.matches.forEach(function(m) {
-      var override = STATE.matchOverrides[m.id];
-      var match = override ? Object.assign({}, m, override) : Object.assign({}, m);
-      match.group = g;
-      var dt = new Date(match.date + 'T' + match.time + ':00+02:00');
+  Object.keys(GROUPS).forEach(function(g) {
+    var gdata = GROUPS[g];
+    gdata.matches.forEach(function(rawM) {
+      var m = getMatch(rawM.id);
+      var match = {
+        id: m.id,
+        home: m.home,
+        away: m.away,
+        date: m.date,
+        time: m.time,
+        venue: m.venue || '',
+        city: m.city || '',
+        group: g
+      };
+      // Parse date carefully - format is "DD cze YYYY" or "YYYY-MM-DD"
+      // Use the raw date string from getMatch
+      var dateStr = m.date;
+      var timeStr = m.time;
+      var dt;
+      // Try ISO format first
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        dt = new Date(dateStr + 'T' + timeStr + ':00+02:00');
+      } else {
+        // Polish format like "11 cze 2026" - convert
+        var months = {sty:1,lut:2,mar:3,kwi:4,maj:5,cze:6,lip:7,sie:8,wrz:9,paz:10,lis:11,gru:12};
+        var parts = dateStr.split(' ');
+        var mon = months[parts[1]] || 6;
+        var day = parseInt(parts[0]);
+        var year = parseInt(parts[2]) || 2026;
+        dt = new Date(year, mon-1, day, parseInt(timeStr.split(':')[0]), parseInt(timeStr.split(':')[1]), 0);
+      }
       match.datetime = dt;
       allMatches.push(match);
     });
   });
+  // Sort chronologically
   allMatches.sort(function(a,b){ return a.datetime - b.datetime; });
+  // Find first match in the future
   for (var i = 0; i < allMatches.length; i++) {
     if (allMatches[i].datetime > now) return allMatches[i];
   }
+  // If all played, return last
   return allMatches[allMatches.length - 1];
 }
 
@@ -3158,11 +3185,13 @@ function doDownloadPNG(canvas, filename) {
     a.href = url;
     a.style.display = 'none';
     document.body.appendChild(a);
-    a.click();
-    setTimeout(function(){
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 500);
+    setTimeout(function() {
+      a.click();
+      setTimeout(function(){
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 1000);
+    }, 100);
   }, 'image/png');
 }
 
