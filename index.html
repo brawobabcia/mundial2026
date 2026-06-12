@@ -2085,7 +2085,7 @@ function renderRankings() {
     const posClass = i===0?'top-1':i===1?'top-2':i===2?'top-3':'';
     return `<tr>
       <td class="rank-pos ${posClass}">${i+1}</td>
-      <td class="rank-name">${p.name}</td>
+      <td class="rank-name">${i+1}. ${p.name}</td>
       <td class="rank-pts">${p.total}</td>
       <td>
         <span class="pts-pill p10">${p.counts[10]||0}</span>
@@ -2110,7 +2110,12 @@ function renderRankings() {
       labels: ranked.map(p => p.name),
       datasets: [{
         data: ranked.map(p => p.total),
-        backgroundColor: ranked.map(function(_, i) { return getPositionColor(i, ranked.length); }),
+        backgroundColor: ranked.map(function(_, i) {
+          if(i===0) return '#FFD700';
+          if(i===1) return '#C0C0C0';
+          if(i===2) return '#8B4513';
+          return '#2d6b4a';
+        }),
         borderColor: 'transparent',
         borderRadius: 6,
       }]
@@ -2787,10 +2792,11 @@ ${sty}
 }
 
 // POBIERZ PNG RANKINGU
-function drawRankingCanvas(ranked, W, H, title) {
+function drawRankingCanvas(ranked, W, H, title, startPos) {
   var canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   var c = canvas.getContext('2d');
+  startPos = startPos || 1;
 
   // Background
   c.fillStyle = '#0a1628';
@@ -2831,56 +2837,63 @@ function drawRankingCanvas(ranked, W, H, title) {
   var gap = Math.floor((availH - barH * n) / (n + 1));
   var maxPts = ranked[0].total || 1;
 
+  // Layout: pos | name | bar(narrow) | pts
   var leftPad = Math.round(W * 0.04);
-  var posW = Math.round(W * 0.09);
-  var nameW = Math.round(W * 0.30);
-  var ptsW = Math.round(W * 0.20);
+  var posW = Math.round(W * 0.10);
+  var nameW = Math.round(W * 0.34);
+  var ptsW = Math.round(W * 0.22);
   var barLeft = leftPad + posW + nameW + 8;
   var barRight = W - leftPad - ptsW - 8;
   var barAreaW = barRight - barLeft;
 
-  var nameSize = Math.min(Math.round(barH * 0.52), Math.round(W * 0.030));
-  var ptsSize = Math.min(Math.round(barH * 0.56), Math.round(W * 0.034));
-  var posSize = Math.min(Math.round(barH * 0.60), Math.round(W * 0.038));
+  var nameSize = Math.min(Math.round(barH * 0.54), Math.round(W * 0.033));
+  var ptsSize = Math.min(Math.round(barH * 0.58), Math.round(W * 0.036));
+  var posSize = Math.min(Math.round(barH * 0.62), Math.round(W * 0.040));
 
-  // Bar colors per position
-  function getBarColor(i, total) {
-    var base = getPositionColor(i, total);
-    return [base, base];
-  }
-
-  function getPosColor(i) {
-    if (i === 0) return '#FFD700';
-    if (i === 1) return '#C0C0C0';
-    if (i === 2) return '#cd7f32';
+  function getPosColor(pos) {
+    if (pos === 1) return '#FFD700';
+    if (pos === 2) return '#C0C0C0';
+    if (pos === 3) return '#cd7f32';
     return '#8899bb';
   }
 
+  function getBarFill(pos, totalPlayers) {
+    if (pos === 1) return '#FFD700';
+    if (pos === 2) return '#C0C0C0';
+    if (pos === 3) return '#8B4513';
+    if (pos <= 10) return '#2d6b4a';
+    // Last positions: red gradient
+    var redStart = 11;
+    var redEnd = totalPlayers;
+    var t = (pos - redStart) / Math.max(redEnd - redStart, 1);
+    var r = Math.round(80 + t * 110);
+    return 'rgb(' + r + ',15,15)';
+  }
+
+  var totalPlayers = startPos + n - 1;
+
   ranked.forEach(function(p, i) {
+    var pos = startPos + i;
     var y = topY + gap + i * (barH + gap);
     var barW = Math.max(Math.round((p.total / maxPts) * barAreaW), 6);
-    var colors = getBarColor(i, n);
 
     // Row background
     c.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
     c.fillRect(leftPad, y, W - leftPad*2, barH);
 
-    // Bar background track
+    // Bar track
     c.fillStyle = 'rgba(255,255,255,0.06)';
-    c.fillRect(barLeft, y + barH*0.22, barAreaW, barH*0.56);
+    c.fillRect(barLeft, y + barH*0.25, barAreaW, barH*0.50);
 
-    // Bar fill with gradient
-    var grad = c.createLinearGradient(barLeft, 0, barLeft + barW, 0);
-    grad.addColorStop(0, colors[0]);
-    grad.addColorStop(1, colors[1]);
-    c.fillStyle = grad;
-    c.fillRect(barLeft, y + barH*0.22, barW, barH*0.56);
+    // Bar fill
+    c.fillStyle = getBarFill(pos, totalPlayers);
+    c.fillRect(barLeft, y + barH*0.25, barW, barH*0.50);
 
     // Position number
-    c.fillStyle = getPosColor(i);
+    c.fillStyle = getPosColor(pos);
     c.font = 'bold ' + posSize + 'px sans-serif';
     c.textAlign = 'center';
-    c.fillText((i+1)+'.', leftPad + posW/2, y + barH*0.70);
+    c.fillText(pos + '.', leftPad + posW/2, y + barH*0.72);
 
     // Name
     c.fillStyle = '#f0f4ff';
@@ -2888,13 +2901,13 @@ function drawRankingCanvas(ranked, W, H, title) {
     c.textAlign = 'left';
     var maxChars = Math.floor(nameW / (nameSize * 0.58));
     var name = p.name.length > maxChars ? p.name.slice(0, maxChars-1)+'.' : p.name;
-    c.fillText(name, leftPad + posW + 4, y + barH*0.70);
+    c.fillText(name, leftPad + posW + 4, y + barH*0.72);
 
     // Points
-    c.fillStyle = getPosColor(i) === '#8899bb' ? '#c9a84c' : getPosColor(i);
+    c.fillStyle = getPosColor(pos) !== '#8899bb' ? getPosColor(pos) : '#c9a84c';
     c.font = 'bold ' + ptsSize + 'px sans-serif';
     c.textAlign = 'right';
-    c.fillText(p.total + ' pkt', W - leftPad - 4, y + barH*0.70);
+    c.fillText(p.total + ' pkt', W - leftPad - 4, y + barH*0.72);
   });
 
   // Gold bottom bar
@@ -2910,7 +2923,17 @@ function drawRankingCanvas(ranked, W, H, title) {
   return canvas;
 }
 
-async function downloadRankingPNG(mode) {
+function doDownloadPNG(canvas, filename) {
+  var dataUrl = canvas.toDataURL('image/png');
+  var a = document.createElement('a');
+  a.download = filename;
+  a.href = dataUrl;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ document.body.removeChild(a); }, 100);
+}
+
+function downloadRankingPNG(mode) {
   showLoader('Generowanie PNG...');
   try {
     var players = STATE.users.filter(function(u){ return u.role==='player'||u.role==='admin'; });
@@ -2924,41 +2947,23 @@ async function downloadRankingPNG(mode) {
 
     if (!ranked.length) { hideLoader(); toast('Brak danych.','error'); return; }
 
-    var subset, W, H, title, filename;
-
+    var canvas, filename;
     if (mode === 'top5') {
-      subset = ranked.slice(0, 5);
-      W = 1080; H = 1080;
-      title = 'TOP 5 · Ranking fazy grupowej';
+      var top = ranked.slice(0, 5);
+      canvas = drawRankingCanvas(top, 1080, 1080, 'TOP 5 · Ranking fazy grupowej', 1);
       filename = 'Mundial2026_TOP5.png';
     } else if (mode === 'last5') {
-      subset = ranked.slice().reverse().slice(0, 5);
-      W = 1080; H = 1080;
-      title = 'LAST 5 · Ranking fazy grupowej';
+      var last = ranked.slice().reverse().slice(0, 5);
+      var startPos = ranked.length;
+      canvas = drawRankingCanvas(last, 1080, 1080, 'LAST 5 · Ranking fazy grupowej', startPos);
       filename = 'Mundial2026_LAST5.png';
     } else {
-      subset = ranked;
-      W = 1080; H = 1920;
-      title = 'Ranking fazy grupowej · ' + ranked.length + ' graczy';
+      canvas = drawRankingCanvas(ranked, 1080, 1920, 'Ranking fazy grupowej · ' + ranked.length + ' graczy', 1);
       filename = 'Mundial2026_Ranking.png';
     }
 
-    var canvas = drawRankingCanvas(subset, W, H, title);
-    var dataUrl = canvas.toDataURL('image/png');
-
-    if (!dataUrl || dataUrl === 'data:,') {
-      hideLoader();
-      toast('Blad generowania obrazu.','error');
-      return;
-    }
-
-    var a = document.createElement('a');
-    a.download = filename;
-    a.href = dataUrl;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
     hideLoader();
+    doDownloadPNG(canvas, filename);
     toast('PNG pobrany!');
   } catch(e) {
     hideLoader();
