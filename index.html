@@ -10,7 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root {
   --navy: #0a1628;
@@ -1009,7 +1011,7 @@ body { font-size: 16px; }
         <div class="chart-wrap"><canvas id="ranking-chart"></canvas></div>
       </div>
       <div class="card">
-        <div class="card-title"><i class="fas fa-list-ol"></i> Tabela rankingowa</div>
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;"><span><i class="fas fa-list-ol"></i> Tabela rankingowa</span><button class="btn-sm" onclick="downloadRankingPNG()" style="border-color:var(--gold);color:var(--gold);"><i class="fas fa-download"></i> Pobierz PNG</button></div>
         <div style="overflow-x:auto;">
         <table class="rankings-table" id="rankings-table">
           <thead>
@@ -2052,7 +2054,15 @@ function renderOthersPicks() {
 function renderRankings() {
   const players = STATE.users.filter(u => u.role === 'player' || u.role === 'admin');
   const ranked = players.map(p => ({...p, ...getPlayerStats(p.id)}))
-    .sort((a,b) => b.total - a.total);
+    .sort((a,b) => {
+      if (b.total !== a.total) return b.total - a.total;
+      if ((b.counts[10]||0) !== (a.counts[10]||0)) return (b.counts[10]||0) - (a.counts[10]||0);
+      if ((b.counts[8]||0) !== (a.counts[8]||0)) return (b.counts[8]||0) - (a.counts[8]||0);
+      if ((b.counts[7]||0) !== (a.counts[7]||0)) return (b.counts[7]||0) - (a.counts[7]||0);
+      if ((b.counts[3]||0) !== (a.counts[3]||0)) return (b.counts[3]||0) - (a.counts[3]||0);
+      if ((b.counts[1]||0) !== (a.counts[1]||0)) return (b.counts[1]||0) - (a.counts[1]||0);
+      return a.name.localeCompare(b.name, 'pl');
+    });
 
   const tbody = document.getElementById('rankings-tbody');
   tbody.innerHTML = ranked.map((p, i) => {
@@ -2077,6 +2087,7 @@ function renderRankings() {
   cw.style.height=Math.max(300,ranked.length*50)+'px';
   const ctx = document.getElementById('ranking-chart').getContext('2d');
   if (rankingChart) rankingChart.destroy();
+  Chart.register(ChartDataLabels);
   rankingChart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -2091,9 +2102,15 @@ function renderRankings() {
     options: {
       indexAxis:'y',
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: {display:false}, tooltip: {
-        callbacks: { label: function(ctx){ return ' '+ctx.raw+' punktow'; } }
-      }},
+      plugins: {
+        legend: {display:false},
+        tooltip: { callbacks: { label: function(ctx){ return ' '+ctx.raw+' pkt'; } } },
+        datalabels: {
+          anchor: 'end', align: 'end',
+          color: '#c9a84c', font: {family:'Outfit', size:13, weight:'bold'},
+          formatter: function(val){ return val+' pkt'; }
+        }
+      },
       scales: {
         x: { ticks: {color:'#8899bb',font:{family:'Outfit',size:13}}, grid: {color:'rgba(201,168,76,0.05)'}, beginAtZero:true },
         y: { ticks: {color:'#f0f4ff',font:{family:'Outfit',size:14},autoSkip:false}, grid: {color:'rgba(201,168,76,0.05)'} }
@@ -2751,6 +2768,144 @@ ${sty}
       win.print();
     }, 500);
   };
+}
+
+// POBIERZ PNG RANKINGU (Facebook 1200x630)
+async function downloadRankingPNG() {
+  showLoader('Generowanie PNG dla Facebook...');
+  try {
+    var W = 1200, H = 630;
+    var canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    var ctx2d = canvas.getContext('2d');
+
+    // Background
+    ctx2d.fillStyle = '#0a1628';
+    ctx2d.fillRect(0, 0, W, H);
+
+    // Top gold bar
+    ctx2d.fillStyle = '#c9a84c';
+    ctx2d.fillRect(0, 0, W, 6);
+
+    // Title
+    ctx2d.fillStyle = '#c9a84c';
+    ctx2d.font = 'bold 36px Arial';
+    ctx2d.textAlign = 'center';
+    ctx2d.fillText('MUNDIAL 2026 — RANKING', W/2, 56);
+
+    // Subtitle
+    ctx2d.fillStyle = '#8899bb';
+    ctx2d.font = '18px Arial';
+    ctx2d.fillText('Faza grupowa · Bravo Babcia · ' + new Date().toLocaleDateString('pl-PL'), W/2, 86);
+
+    // Divider
+    ctx2d.strokeStyle = 'rgba(201,168,76,0.3)';
+    ctx2d.lineWidth = 1;
+    ctx2d.beginPath();
+    ctx2d.moveTo(40, 100); ctx2d.lineTo(W-40, 100);
+    ctx2d.stroke();
+
+    // Get ranking data
+    var players = STATE.users.filter(function(u){ return u.role==='player'||u.role==='admin'; });
+    var ranked = players.map(function(p){ return Object.assign({},p,getPlayerStats(p.id)); })
+      .sort(function(a,b){
+        if(b.total!==a.total) return b.total-a.total;
+        if((b.counts[10]||0)!==(a.counts[10]||0)) return (b.counts[10]||0)-(a.counts[10]||0);
+        if((b.counts[8]||0)!==(a.counts[8]||0)) return (b.counts[8]||0)-(a.counts[8]||0);
+        return a.name.localeCompare(b.name,'pl');
+      });
+
+    if (!ranked.length) { hideLoader(); toast('Brak danych rankingu.','error'); return; }
+
+    var maxPts = ranked[0].total || 1;
+    var n = ranked.length;
+    var barAreaLeft = 180;
+    var barAreaRight = W - 100;
+    var barAreaWidth = barAreaRight - barAreaLeft;
+    var topY = 115;
+    var bottomY = H - 50;
+    var availH = bottomY - topY;
+    var barH = Math.min(32, Math.floor(availH / n) - 6);
+    var gap = Math.floor((availH - barH * n) / (n + 1));
+
+    // Medal colors
+    var posColors = ['#ffd700','#c0c0c0','#cd7f32'];
+
+    ranked.forEach(function(p, i) {
+      var y = topY + gap + i * (barH + gap);
+      var barW = Math.round((p.total / maxPts) * barAreaWidth);
+
+      // Bar background
+      ctx2d.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx2d.roundRect(barAreaLeft, y, barAreaWidth, barH, 4);
+      ctx2d.fill();
+
+      // Bar fill
+      var gradient = ctx2d.createLinearGradient(barAreaLeft, 0, barAreaLeft + barW, 0);
+      if (i === 0) {
+        gradient.addColorStop(0, '#c9a84c');
+        gradient.addColorStop(1, '#f0c96a');
+      } else if (i === 1) {
+        gradient.addColorStop(0, '#7db5f0');
+        gradient.addColorStop(1, '#9dcaf0');
+      } else if (i === 2) {
+        gradient.addColorStop(0, '#e8b84a');
+        gradient.addColorStop(1, '#f0c96a');
+      } else {
+        gradient.addColorStop(0, 'rgba(201,168,76,0.4)');
+        gradient.addColorStop(1, 'rgba(201,168,76,0.6)');
+      }
+      ctx2d.fillStyle = gradient;
+      ctx2d.beginPath();
+      ctx2d.roundRect(barAreaLeft, y, Math.max(barW, 4), barH, 4);
+      ctx2d.fill();
+
+      // Position number
+      ctx2d.fillStyle = i < 3 ? posColors[i] : '#556688';
+      ctx2d.font = 'bold ' + (barH * 0.7) + 'px Arial';
+      ctx2d.textAlign = 'right';
+      ctx2d.fillText((i+1)+'.', barAreaLeft - 10, y + barH * 0.75);
+
+      // Name
+      ctx2d.fillStyle = '#f0f4ff';
+      ctx2d.font = (barH * 0.55) + 'px Arial';
+      ctx2d.textAlign = 'left';
+      var shortName = p.name.length > 12 ? p.name.slice(0,11)+'.' : p.name;
+      ctx2d.fillText(shortName, 10, y + barH * 0.72);
+
+      // Points label on bar
+      if (p.total > 0) {
+        ctx2d.fillStyle = i < 3 ? '#0a1628' : '#f0f4ff';
+        ctx2d.font = 'bold ' + (barH * 0.55) + 'px Arial';
+        ctx2d.textAlign = 'left';
+        var labelX = barAreaLeft + barW + 8;
+        if (barW < 60) labelX = barAreaLeft + barW + 8;
+        ctx2d.fillStyle = '#c9a84c';
+        ctx2d.fillText(p.total + ' pkt', labelX, y + barH * 0.72);
+      }
+    });
+
+    // Bottom bar
+    ctx2d.fillStyle = '#c9a84c';
+    ctx2d.fillRect(0, H-6, W, 6);
+
+    // Footer
+    ctx2d.fillStyle = '#445566';
+    ctx2d.font = '14px Arial';
+    ctx2d.textAlign = 'center';
+    ctx2d.fillText('brawobabcia.github.io/mundial2026', W/2, H-14);
+
+    hideLoader();
+    var a = document.createElement('a');
+    a.download = 'Mundial2026_Ranking_FB.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    toast('PNG dla Facebook pobrany!');
+  } catch(e) {
+    hideLoader();
+    toast('Błąd: '+e.message, 'error');
+    console.error(e);
+  }
 }
 
 // EKSPORT ZIP
