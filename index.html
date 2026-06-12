@@ -2140,7 +2140,7 @@ function renderRankings() {
   rankingChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ranked.map(function(p, i){ return (i+1)+'. '+p.name; }),
+      labels: ranked.map(function(p, i){ return (i+1)+'.  '+p.name; }),
       datasets: [{
         data: ranked.map(p => p.total),
         backgroundColor: ranked.map(function(_, i) {
@@ -2179,7 +2179,7 @@ function renderRankings() {
       layout: { padding: { right: 80 } },
       scales: {
         x: { ticks: {color:'#8899bb',font:{family:'Outfit',size:13}}, grid: {color:'rgba(201,168,76,0.05)'}, beginAtZero:true, max: Math.max(...ranked.map(p=>p.total)) * 1.18 },
-        y: { ticks: {color:'#f0f4ff',font:{family:'Outfit',size:14},autoSkip:false}, grid: {color:'rgba(201,168,76,0.05)'} }
+        y: { ticks: {color:'#f0f4ff',font:{family:'Outfit',size:14},autoSkip:false,align:'start'}, grid: {color:'rgba(201,168,76,0.05)'}, afterFit:function(axis){axis.width=150;}, position:'left' }
       }
     }
   });
