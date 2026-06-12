@@ -2165,6 +2165,7 @@ function renderRankings() {
           formatter: function(val){ return val+' pkt'; }
         }
       },
+      layout: { padding: { right: 70 } },
       scales: {
         x: { ticks: {color:'#8899bb',font:{family:'Outfit',size:13}}, grid: {color:'rgba(201,168,76,0.05)'}, beginAtZero:true },
         y: { ticks: {color:'#f0f4ff',font:{family:'Outfit',size:14},autoSkip:false}, grid: {color:'rgba(201,168,76,0.05)'} }
@@ -2846,7 +2847,12 @@ function getNextMatch() {
   }
   return allMatches[allMatches.length - 1];
 }
-function downloadMatchInfographic() {
+async function downloadMatchInfographic() {
+  // Refresh data first to ensure all picks are loaded
+  showLoader('Pobieranie danych...');
+  try { await loadStateFromSheets(); } catch(e) { console.warn('refresh failed', e); }
+  hideLoader();
+  
   var sel = document.getElementById('match-infographic-select');
   var matchId = sel ? sel.value : null;
   var match = matchList.find(function(m){ return m.id === matchId; }) || null;
@@ -2893,7 +2899,7 @@ function downloadMatchInfographic() {
   var matchPicks=[];
   players.forEach(function(p){
     var pick=(STATE.picks[p.id]||{})[match.id];
-    if(pick&&pick.scoreHome!==undefined&&pick.scoreHome!==''){
+    if(pick&&pick.scoreHome!==null&&pick.scoreHome!==undefined&&pick.scoreHome!==''&&pick.scoreAway!==null&&pick.scoreAway!==undefined&&pick.scoreAway!==''){
       matchPicks.push({name:p.name,scoreHome:String(pick.scoreHome),scoreAway:String(pick.scoreAway),typs:pick.typs||[]});
     }
   });
