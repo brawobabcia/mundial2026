@@ -2799,50 +2799,23 @@ function getNextMatch() {
   var now = new Date();
   var allMatches = [];
   Object.keys(GROUPS).forEach(function(g) {
-    var gdata = GROUPS[g];
-    gdata.matches.forEach(function(rawM) {
+    GROUPS[g].matches.forEach(function(rawM) {
       var m = getMatch(rawM.id);
-      var match = {
-        id: m.id,
-        home: m.home,
-        away: m.away,
-        date: m.date,
-        time: m.time,
-        venue: m.venue || '',
-        city: m.city || '',
-        group: g
-      };
-      // Parse date carefully - format is "DD cze YYYY" or "YYYY-MM-DD"
-      // Use the raw date string from getMatch
-      var dateStr = m.date;
-      var timeStr = m.time;
-      var dt;
-      // Try ISO format first
-      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        dt = new Date(dateStr + 'T' + timeStr + ':00+02:00');
-      } else {
-        // Polish format like "11 cze 2026" - convert
-        var months = {sty:1,lut:2,mar:3,kwi:4,maj:5,cze:6,lip:7,sie:8,wrz:9,paz:10,lis:11,gru:12};
-        var parts = dateStr.split(' ');
-        var mon = months[parts[1]] || 6;
-        var day = parseInt(parts[0]);
-        var year = parseInt(parts[2]) || 2026;
-        dt = new Date(year, mon-1, day, parseInt(timeStr.split(':')[0]), parseInt(timeStr.split(':')[1]), 0);
-      }
-      match.datetime = dt;
-      allMatches.push(match);
+      var dt = new Date(m.date + 'T' + m.time + ':00+02:00');
+      allMatches.push({
+        id: m.id, home: m.home, away: m.away,
+        date: m.date, time: m.time,
+        venue: m.venue || '', city: m.city || '',
+        group: g, datetime: dt
+      });
     });
   });
-  // Sort chronologically
   allMatches.sort(function(a,b){ return a.datetime - b.datetime; });
-  // Find first match in the future
   for (var i = 0; i < allMatches.length; i++) {
     if (allMatches[i].datetime > now) return allMatches[i];
   }
-  // If all played, return last
   return allMatches[allMatches.length - 1];
 }
-
 function downloadMatchInfographic() {
   var match = getNextMatch();
   if (!match) { toast('Brak nadchodzących meczów.', 'error'); return; }
@@ -3178,21 +3151,21 @@ function drawRankingCanvas(ranked, W, H, title, startPos, reversed) {
 }
 
 function doDownloadPNG(canvas, filename) {
-  canvas.toBlob(function(blob) {
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.download = filename;
-    a.href = url;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    setTimeout(function() {
-      a.click();
-      setTimeout(function(){
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 1000);
-    }, 100);
-  }, 'image/png');
+  var dataUrl = canvas.toDataURL('image/png');
+  var byteString = atob(dataUrl.split(',')[1]);
+  var mimeString = 'image/png';
+  var ab = new ArrayBuffer(byteString.length);
+  var ia = new Uint8Array(ab);
+  for (var i = 0; i < byteString.length; i++) { ia[i] = byteString.charCodeAt(i); }
+  var blob = new Blob([ab], {type: mimeString});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true, view:window}));
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
 }
 
 function downloadRankingPNG(mode) {
