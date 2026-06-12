@@ -2165,9 +2165,9 @@ function renderRankings() {
           formatter: function(val){ return val+' pkt'; }
         }
       },
-      layout: { padding: { right: 70 } },
+      layout: { padding: { right: 80 } },
       scales: {
-        x: { ticks: {color:'#8899bb',font:{family:'Outfit',size:13}}, grid: {color:'rgba(201,168,76,0.05)'}, beginAtZero:true },
+        x: { ticks: {color:'#8899bb',font:{family:'Outfit',size:13}}, grid: {color:'rgba(201,168,76,0.05)'}, beginAtZero:true, max: Math.max(...ranked.map(p=>p.total)) * 1.18 },
         y: { ticks: {color:'#f0f4ff',font:{family:'Outfit',size:14},autoSkip:false}, grid: {color:'rgba(201,168,76,0.05)'} }
       }
     }
@@ -2966,7 +2966,7 @@ async function downloadMatchInfographic() {
   var gridRows = Math.ceil(matchPicks.length/cols);
   var gridH = gridRows*(cardH+cardGap);
   var rowH = 26, headerSize = 14, rowSize = 15;
-  var nScores = Math.min(sortedScores.length, 7);
+  var nScores = sortedScores.length;
   var bottomH = 16 + rowH + nScores*rowH + 20; // divider + header + rows + padding
   var totalH = gridTop + gridH + 10 + bottomH + 40; // content + footer
   
@@ -3046,10 +3046,10 @@ async function downloadMatchInfographic() {
   var posColorsTop = ['#FFD700','#C0C0C0','#cd7f32','#8899bb','#8899bb'];
   var posColorsLast = ['#8B0000','#A00000','#B50000','#CC0000','#DD1111'];
 
-  // COL 1: score frequency
+  // COL 1: score frequency - ALL results
   c.fillStyle='#c9a84c'; c.font='bold '+headerSize+'px sans-serif'; c.textAlign='left';
   c.fillText('WYNIKI', col1X, secY);
-  sortedScores.slice(0,5).forEach(function(e,i){
+  sortedScores.forEach(function(e,i){
     var ry=secY+rowH+i*rowH;
     c.fillStyle='#f0f4ff'; c.font='bold '+rowSize+'px sans-serif'; c.textAlign='left';
     c.fillText(e[0], col1X, ry);
