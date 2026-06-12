@@ -2094,7 +2094,14 @@ function renderRankings() {
       labels: ranked.map(p => p.name),
       datasets: [{
         data: ranked.map(p => p.total),
-        backgroundColor: ranked.map((_, i) => i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'rgba(201,168,76,0.5)'),
+        backgroundColor: ranked.map(function(_, i) {
+          if(i===0) return '#FFD700';
+          if(i===1) return '#C0C0C0';
+          if(i===2) return '#8B4513';
+          if(i<=5)  return '#2a6fa8';
+          if(i<=9)  return '#2a7a5a';
+          return '#5a4a8a';
+        }),
         borderColor: 'transparent',
         borderRadius: 6,
       }]
@@ -2920,7 +2927,7 @@ async function downloadRankingPNG(mode) {
       title = 'TOP 5 · Ranking fazy grupowej';
       filename = 'Mundial2026_TOP5.png';
     } else if (mode === 'last5') {
-      subset = ranked.slice(Math.max(0, ranked.length-5)).reverse();
+      subset = ranked.slice().reverse().slice(0, 5);
       W = 1080; H = 1080;
       title = 'LAST 5 · Ranking fazy grupowej';
       filename = 'Mundial2026_LAST5.png';
