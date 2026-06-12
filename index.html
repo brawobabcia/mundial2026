@@ -1007,10 +1007,7 @@ body { font-size: 16px; }
           <div class="page-title">Ranking i statystyki</div>
           <div class="page-subtitle">Tabela wyników i statystyki typowań wszystkich graczy</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
-          <select id="match-infographic-select" class="score-input" style="width:auto;min-width:200px;padding:6px 10px;font-size:13px;"></select>
-          <button class="btn-save" onclick="downloadMatchInfographic()" style="border-color:var(--gold);color:var(--gold);"><i class="fas fa-futbol"></i> Infografika</button>
-        </div>
+        <button class="btn-save" onclick="downloadMatchInfographic()" style="border-color:var(--gold);color:var(--gold);margin-top:8px;"><i class="fas fa-futbol"></i> Następny mecz</button>
       </div>
       <div class="card" style="margin-bottom:20px;">
         <div class="card-title"><i class="fas fa-chart-bar"></i> Wykres punktów</div>
@@ -2074,28 +2071,32 @@ function renderOthersPicks() {
 // PAGE: RANKINGS
 // ═══════════════════════════════════════════════════════
 function renderRankings() {
-  // Populate match selector
+  // Populate match selector sorted by group A1-L6
   var sel = document.getElementById('match-infographic-select');
   if (sel) {
-    var now = new Date();
     var allMatches = [];
-    Object.keys(GROUPS).forEach(function(g) {
+    var groupOrder = 'ABCDEFGHIJKL'.split('');
+    groupOrder.forEach(function(g) {
+      if (!GROUPS[g]) return;
       GROUPS[g].matches.forEach(function(rawM) {
         var m = getMatch(rawM.id);
         var dt = new Date(m.date + 'T' + m.time + ':00+02:00');
-        allMatches.push({id:m.id, home:m.home, away:m.away, date:m.date, time:m.time, venue:m.venue||'', city:m.city||'', group:g, datetime:dt});
+        allMatches.push({id:m.id,home:m.home,away:m.away,date:m.date,time:m.time,venue:m.venue||'',city:m.city||'',group:g,datetime:dt});
       });
     });
-    allMatches.sort(function(a,b){ return a.datetime - b.datetime; });
+    var now = new Date();
     var nextIdx = 0;
-    for (var i = 0; i < allMatches.length; i++) {
-      if (allMatches[i].datetime > now) { nextIdx = i; break; }
+    // Find chronologically next match for default selection
+    var chronological = allMatches.slice().sort(function(a,b){return a.datetime-b.datetime;});
+    var nextMatch = chronological[chronological.length-1];
+    for (var i=0; i<chronological.length; i++) {
+      if (chronological[i].datetime > now) { nextMatch = chronological[i]; break; }
     }
-    sel.innerHTML = allMatches.map(function(m, i) {
+    sel.innerHTML = allMatches.map(function(m) {
       var d = new Date(m.date + 'T12:00:00');
       var months = ['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paz','lis','gru'];
       var label = m.id + ': ' + m.home + ' vs ' + m.away + ' (' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + m.time + ')';
-      return '<option value="' + i + '"' + (i===nextIdx?' selected':'') + '>' + label + '</option>';
+      return '<option value="' + m.id + '"' + (m.id===nextMatch.id?' selected':'') + '>' + label + '</option>';
     }).join('');
     sel._matches = allMatches;
   }
@@ -2847,15 +2848,18 @@ function getNextMatch() {
 }
 function downloadMatchInfographic() {
   var sel = document.getElementById('match-infographic-select');
-  var match = (sel && sel._matches) ? sel._matches[parseInt(sel.value)] : null;
+  var matchId = sel ? sel.value : null;
+  var match = null;
+  if (matchId && sel._matches) {
+    match = sel._matches.find(function(m){ return m.id === matchId; });
+  }
   if (!match) {
-    // fallback: find next match
     var now = new Date();
     var allM = [];
     Object.keys(GROUPS).forEach(function(g) {
       GROUPS[g].matches.forEach(function(rawM) {
         var m = getMatch(rawM.id);
-        var dt = new Date(m.date + 'T' + m.time + ':00+02:00');
+        var dt = new Date(m.date+'T'+m.time+':00+02:00');
         allM.push({id:m.id,home:m.home,away:m.away,date:m.date,time:m.time,venue:m.venue||'',city:m.city||'',group:g,datetime:dt});
       });
     });
@@ -2866,13 +2870,15 @@ function downloadMatchInfographic() {
   if (!match) { toast('Brak meczu.','error'); return; }
 
   var W=800, H=1000;
-  var canvas=document.createElement('canvas');
-  canvas.width=W; canvas.height=H;
-  var c=canvas.getContext('2d');
+  var cv=document.createElement('canvas');
+  cv.width=W; cv.height=H;
+  var c=cv.getContext('2d');
 
+  // Background
   c.fillStyle='#0a1628'; c.fillRect(0,0,W,H);
   c.fillStyle='#c9a84c'; c.fillRect(0,0,W,8);
 
+  // Header
   c.fillStyle='#8899bb'; c.font='bold 13px sans-serif'; c.textAlign='center';
   c.fillText('MUNDIAL 2026 - TYPOWANIE - MECZ '+match.id+' - GRUPA '+match.group, W/2, 30);
   c.fillStyle='#f0f4ff'; c.font='bold 38px sans-serif';
@@ -2885,12 +2891,13 @@ function downloadMatchInfographic() {
   c.strokeStyle='rgba(201,168,76,0.3)'; c.lineWidth=1;
   c.beginPath(); c.moveTo(30,110); c.lineTo(W-30,110); c.stroke();
 
+  // Collect picks
   var players=STATE.users.filter(function(u){return u.role==='player'||u.role==='admin';});
   var matchPicks=[];
   players.forEach(function(p){
     var pick=(STATE.picks[p.id]||{})[match.id];
     if(pick&&pick.scoreHome!==undefined&&pick.scoreHome!==''){
-      matchPicks.push({name:p.name,scoreHome:pick.scoreHome,scoreAway:pick.scoreAway,typs:pick.typs||[]});
+      matchPicks.push({name:p.name,scoreHome:String(pick.scoreHome),scoreAway:String(pick.scoreAway),typs:pick.typs||[]});
     }
   });
   matchPicks.sort(function(a,b){return a.name.localeCompare(b.name,'pl');});
@@ -2898,26 +2905,38 @@ function downloadMatchInfographic() {
   var total=matchPicks.length;
   var countZ1=matchPicks.filter(function(p){return p.typs.indexOf('Z1')>-1;}).length;
   var countR=matchPicks.filter(function(p){return p.typs.indexOf('R')>-1&&p.typs.length>1;}).length;
-  var scoreFreq={};
-  matchPicks.forEach(function(p){var k=p.scoreHome+':'+p.scoreAway; scoreFreq[k]=(scoreFreq[k]||0)+1;});
-  var topScore=Object.entries(scoreFreq).sort(function(a,b){return b[1]-a[1];})[0];
 
+  // Score frequency - count exact: "X:Y"
+  var scoreFreq={};
+  matchPicks.forEach(function(p){
+    var k=p.scoreHome+':'+p.scoreAway;
+    scoreFreq[k]=(scoreFreq[k]||0)+1;
+  });
+  var sortedScores=Object.entries(scoreFreq).sort(function(a,b){
+    if(b[1]!==a[1]) return b[1]-a[1];
+    return a[0].localeCompare(b[0]);
+  });
+  var topScore=sortedScores[0];
+
+  // Stats boxes
   var boxY=122,boxH=68,boxW=(W-60)/3,boxGap=10;
-  [{val:total+'',lbl:'graczy typuje'},
-   {val:countZ1+'/'+total,lbl:'typuje Z1 ('+match.home+')',sub:countR>0?'w tym '+countR+' z zabezpieczeniem R':''},
+  [{val:total+'',lbl:'graczy typuje',sub:''},
+   {val:countZ1+'/'+total,lbl:'typuje Z1 ('+match.home+')',sub:countR>0?'w tym '+countR+' z zab. R':''},
    {val:topScore?topScore[0]:'---',lbl:'najpopularniejszy wynik',sub:topScore?topScore[1]+' graczy':''}
   ].forEach(function(s,i){
     var bx=30+i*(boxW+boxGap);
     c.fillStyle='#112240'; c.fillRect(bx,boxY,boxW,boxH);
     c.fillStyle='#c9a84c'; c.font='bold 26px sans-serif'; c.textAlign='center';
     c.fillText(s.val,bx+boxW/2,boxY+30);
-    c.fillStyle='#8899bb'; c.font='11px sans-serif'; c.fillText(s.lbl,bx+boxW/2,boxY+46);
+    c.fillStyle='#8899bb'; c.font='11px sans-serif';
+    c.fillText(s.lbl,bx+boxW/2,boxY+46);
     if(s.sub){c.fillStyle='#556688';c.font='10px sans-serif';c.fillText(s.sub,bx+boxW/2,boxY+60);}
   });
 
   c.strokeStyle='rgba(201,168,76,0.2)';
   c.beginPath(); c.moveTo(30,boxY+boxH+10); c.lineTo(W-30,boxY+boxH+10); c.stroke();
 
+  // Players grid 4 columns
   var gridTop=boxY+boxH+20;
   var cols=4,cardW=Math.floor((W-60-(cols-1)*8)/cols),cardH=68,cardGap=8;
   matchPicks.forEach(function(p,i){
@@ -2926,7 +2945,8 @@ function downloadMatchInfographic() {
     c.fillStyle='#112240'; c.fillRect(cx,cy,cardW,cardH);
     c.fillStyle='#f0f4ff'; c.font='bold 14px sans-serif'; c.textAlign='left';
     var maxC=Math.floor(cardW/8.5);
-    c.fillText(p.name.length>maxC?p.name.slice(0,maxC-1)+'.':p.name,cx+8,cy+18);
+    var nm=p.name.length>maxC?p.name.slice(0,maxC-1)+'.':p.name;
+    c.fillText(nm,cx+8,cy+18);
     c.fillStyle='#c9a84c'; c.font='bold 20px sans-serif';
     c.fillText(p.scoreHome+' : '+p.scoreAway,cx+8,cy+42);
     var tx=cx+8;
@@ -2939,51 +2959,63 @@ function downloadMatchInfographic() {
     });
   });
 
-  var bottomY=gridTop+(Math.ceil(matchPicks.length/cols))*(cardH+cardGap)+10;
+  // Bottom section
+  var rows=Math.ceil(matchPicks.length/cols);
+  var bottomY=gridTop+rows*(cardH+cardGap)+10;
   c.strokeStyle='rgba(201,168,76,0.2)';
   c.beginPath(); c.moveTo(30,bottomY); c.lineTo(W-30,bottomY); c.stroke();
-  bottomY+=12;
+  bottomY+=14;
 
-  var halfW=(W-70)/2;
+  // Two columns: left=score freq, right=TOP5
+  var leftX=30, rightX=W/2+10;
+  var colW=W/2-50;
 
-  // Left: score frequency
-  c.fillStyle='#8899bb'; c.font='bold 11px sans-serif'; c.textAlign='left';
-  c.fillText('ILE GRACZY TYPUJE DANY WYNIK', 30, bottomY+12);
-  Object.entries(scoreFreq).sort(function(a,b){return b[1]-a[1];}).slice(0,6).forEach(function(e,i){
-    var ry=bottomY+26+i*19;
-    c.fillStyle='#c9a84c'; c.font='bold 13px sans-serif'; c.textAlign='left'; c.fillText(e[0],30,ry);
-    c.fillStyle='#8899bb'; c.font='12px sans-serif'; c.textAlign='right';
-    c.fillText(e[1]+' '+(e[1]===1?'gracz':'graczy'),30+halfW,ry);
+  // LEFT: score frequency header
+  c.fillStyle='#c9a84c'; c.font='bold 11px sans-serif'; c.textAlign='left';
+  c.fillText('ILE GRACZY TYPUJE DANY WYNIK', leftX, bottomY);
+  
+  // LEFT: score freq rows
+  sortedScores.slice(0,8).forEach(function(e,i){
+    var ry=bottomY+16+i*18;
+    c.fillStyle='#f0f4ff'; c.font='bold 13px sans-serif'; c.textAlign='left';
+    c.fillText(e[0], leftX, ry);
+    c.fillStyle='#8899bb'; c.font='12px sans-serif'; c.textAlign='left';
+    c.fillText(e[1]+' '+(e[1]===1?'gracz':'graczy'), leftX+60, ry);
   });
 
-  // Right: TOP 5
-  c.fillStyle='#8899bb'; c.font='bold 11px sans-serif'; c.textAlign='left';
-  c.fillText('AKTUALNY TOP 5', 40+halfW, bottomY+12);
+  // RIGHT: TOP 5 header
+  c.fillStyle='#c9a84c'; c.font='bold 11px sans-serif'; c.textAlign='left';
+  c.fillText('AKTUALNY TOP 5', rightX, bottomY);
+
+  // RIGHT: TOP 5 rows
   var allPlayers=STATE.users.filter(function(u){return u.role==='player'||u.role==='admin';});
   var ranked=allPlayers.map(function(p){return Object.assign({},p,getPlayerStats(p.id));})
     .sort(function(a,b){
       if(b.total!==a.total) return b.total-a.total;
       if((b.counts[10]||0)!==(a.counts[10]||0)) return (b.counts[10]||0)-(a.counts[10]||0);
+      if((b.counts[8]||0)!==(a.counts[8]||0)) return (b.counts[8]||0)-(a.counts[8]||0);
       return a.name.localeCompare(b.name,'pl');
     });
   var posColors=['#FFD700','#C0C0C0','#cd7f32','#8899bb','#8899bb'];
   ranked.slice(0,5).forEach(function(p,i){
-    var ry=bottomY+26+i*19;
-    c.fillStyle=posColors[i]; c.font='bold 13px sans-serif'; c.textAlign='left';
-    c.fillText((i+1)+'. '+p.name, 40+halfW, ry);
+    var ry=bottomY+16+i*18;
+    c.fillStyle=posColors[i]; c.font='bold 12px sans-serif'; c.textAlign='left';
+    c.fillText((i+1)+'.', rightX, ry);
+    c.fillStyle='#f0f4ff'; c.font='bold 12px sans-serif';
+    c.fillText(p.name, rightX+24, ry);
     c.fillStyle='#c9a84c'; c.textAlign='right';
     c.fillText(p.total+' pkt', W-30, ry);
   });
 
+  // Footer
   c.fillStyle='#c9a84c'; c.fillRect(0,H-8,W,8);
   c.fillStyle='#334455'; c.font='12px sans-serif'; c.textAlign='center';
   c.fillText('brawobabcia.github.io/mundial2026', W/2, H-16);
 
-  doDownloadPNG(canvas, 'Mundial2026_Mecz_'+match.id+'.png');
+  doDownloadPNG(cv, 'Mundial2026_Mecz_'+match.id+'.png');
   toast('Infografika pobrana!');
 }
 
-// POBIERZ PNG RANKINGU
 function drawRankingCanvas(ranked, W, H, title, startPos, reversed) {
   var canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
