@@ -1011,7 +1011,7 @@ body { font-size: 16px; }
         <div class="chart-wrap"><canvas id="ranking-chart"></canvas></div>
       </div>
       <div class="card">
-        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;"><span><i class="fas fa-list-ol"></i> Tabela rankingowa</span><button class="btn-sm" onclick="downloadRankingPNG()" style="border-color:var(--gold);color:var(--gold);"><i class="fas fa-download"></i> Pobierz PNG</button></div>
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><span><i class="fas fa-list-ol"></i> Tabela rankingowa</span><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn-sm" onclick="downloadRankingPNG('all')" style="border-color:var(--gold);color:var(--gold);"><i class="fas fa-download"></i> Wszyscy</button><button class="btn-sm" onclick="downloadRankingPNG('top5')" style="border-color:#4caf7d;color:#4caf7d;"><i class="fas fa-trophy"></i> TOP 5</button><button class="btn-sm" onclick="downloadRankingPNG('last5')" style="border-color:#e05555;color:#e05555;"><i class="fas fa-arrow-down"></i> LAST 5</button></div></div>
         <div style="overflow-x:auto;">
         <table class="rankings-table" id="rankings-table">
           <thead>
@@ -2770,42 +2770,124 @@ ${sty}
   };
 }
 
-// POBIERZ PNG RANKINGU (Facebook 1200x630)
-async function downloadRankingPNG() {
-  showLoader('Generowanie PNG dla Facebook...');
+// POBIERZ PNG RANKINGU
+function drawRankingCanvas(ranked, W, H, title) {
+  var canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  var c = canvas.getContext('2d');
+
+  // Background
+  c.fillStyle = '#0a1628';
+  c.fillRect(0, 0, W, H);
+
+  // Gold top bar
+  c.fillStyle = '#c9a84c';
+  c.fillRect(0, 0, W, 8);
+
+  // Title
+  var titleSize = Math.round(W * 0.042);
+  c.fillStyle = '#c9a84c';
+  c.font = 'bold ' + titleSize + 'px Arial';
+  c.textAlign = 'center';
+  c.fillText('MUNDIAL 2026', W/2, titleSize + 18);
+
+  var subSize = Math.round(W * 0.022);
+  c.fillStyle = '#8899bb';
+  c.font = subSize + 'px Arial';
+  c.fillText(title, W/2, titleSize + 18 + subSize + 8);
+
+  // Date
+  var dateSize = Math.round(W * 0.018);
+  c.fillStyle = '#556688';
+  c.font = dateSize + 'px Arial';
+  c.fillText(new Date().toLocaleDateString('pl-PL'), W/2, titleSize + 18 + subSize + 8 + dateSize + 6);
+
+  // Divider
+  var divY = titleSize + 18 + subSize + 8 + dateSize + 18;
+  c.strokeStyle = 'rgba(201,168,76,0.3)';
+  c.lineWidth = 1;
+  c.beginPath(); c.moveTo(40, divY); c.lineTo(W-40, divY); c.stroke();
+
+  var topY = divY + 16;
+  var bottomY = H - 50;
+  var availH = bottomY - topY;
+  var n = ranked.length;
+  var barH = Math.floor(availH / n * 0.62);
+  var gap = Math.floor((availH - barH * n) / (n + 1));
+  var maxPts = ranked[0].total || 1;
+
+  var leftPad = Math.round(W * 0.04);
+  var nameW = Math.round(W * 0.28);
+  var posW = Math.round(W * 0.08);
+  var barLeft = leftPad + posW + nameW + 10;
+  var ptsW = Math.round(W * 0.18);
+  var barRight = W - leftPad - ptsW - 10;
+  var barAreaW = barRight - barLeft;
+
+  var nameSize = Math.min(Math.round(barH * 0.55), Math.round(W * 0.028));
+  var ptsSize = Math.min(Math.round(barH * 0.6), Math.round(W * 0.032));
+  var posSize = Math.min(Math.round(barH * 0.65), Math.round(W * 0.036));
+
+  var posColors = ['#ffd700','#c0c0c0','#cd7f32'];
+
+  ranked.forEach(function(p, i) {
+    var y = topY + gap + i * (barH + gap);
+    var barW = Math.max(Math.round((p.total / maxPts) * barAreaW), 4);
+
+    // Row bg
+    c.fillStyle = 'rgba(255,255,255,0.03)';
+    c.fillRect(leftPad, y, W - leftPad*2, barH);
+
+    // Bar bg
+    c.fillStyle = 'rgba(255,255,255,0.05)';
+    c.fillRect(barLeft, y + barH*0.2, barAreaW, barH*0.6);
+
+    // Bar fill
+    var grad = c.createLinearGradient(barLeft, 0, barLeft + barW, 0);
+    if (i === 0) { grad.addColorStop(0,'#c9a84c'); grad.addColorStop(1,'#f0c96a'); }
+    else if (i === 1) { grad.addColorStop(0,'#7db5f0'); grad.addColorStop(1,'#9dcaf0'); }
+    else if (i === 2) { grad.addColorStop(0,'#e8b84a'); grad.addColorStop(1,'#f0c96a'); }
+    else { grad.addColorStop(0,'rgba(201,168,76,0.35)'); grad.addColorStop(1,'rgba(201,168,76,0.55)'); }
+    c.fillStyle = grad;
+    c.fillRect(barLeft, y + barH*0.2, barW, barH*0.6);
+
+    // Position
+    c.fillStyle = i < 3 ? posColors[i] : '#556688';
+    c.font = 'bold ' + posSize + 'px Arial';
+    c.textAlign = 'center';
+    c.fillText((i+1)+'.', leftPad + posW/2, y + barH*0.68);
+
+    // Name
+    c.fillStyle = '#f0f4ff';
+    c.font = 'bold ' + nameSize + 'px Arial';
+    c.textAlign = 'left';
+    var maxChars = Math.floor(nameW / (nameSize * 0.6));
+    var name = p.name.length > maxChars ? p.name.slice(0, maxChars-1)+'.' : p.name;
+    c.fillText(name, leftPad + posW + 4, y + barH*0.68);
+
+    // Points
+    c.fillStyle = i < 3 ? posColors[i] : '#c9a84c';
+    c.font = 'bold ' + ptsSize + 'px Arial';
+    c.textAlign = 'right';
+    c.fillText(p.total + ' pkt', W - leftPad - 4, y + barH*0.68);
+  });
+
+  // Gold bottom bar
+  c.fillStyle = '#c9a84c';
+  c.fillRect(0, H-8, W, 8);
+
+  // Footer
+  c.fillStyle = '#334455';
+  c.font = Math.round(W*0.016) + 'px Arial';
+  c.textAlign = 'center';
+  c.fillText('brawobabcia.github.io/mundial2026', W/2, H - 16);
+
+  return canvas;
+}
+
+async function downloadRankingPNG(mode) {
+  showLoader('Generowanie PNG...');
   try {
-    var W = 1200, H = 630;
-    var canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    var ctx2d = canvas.getContext('2d');
-
-    // Background
-    ctx2d.fillStyle = '#0a1628';
-    ctx2d.fillRect(0, 0, W, H);
-
-    // Top gold bar
-    ctx2d.fillStyle = '#c9a84c';
-    ctx2d.fillRect(0, 0, W, 6);
-
-    // Title
-    ctx2d.fillStyle = '#c9a84c';
-    ctx2d.font = 'bold 36px Arial';
-    ctx2d.textAlign = 'center';
-    ctx2d.fillText('MUNDIAL 2026 — RANKING', W/2, 56);
-
-    // Subtitle
-    ctx2d.fillStyle = '#8899bb';
-    ctx2d.font = '18px Arial';
-    ctx2d.fillText('Faza grupowa · Bravo Babcia · ' + new Date().toLocaleDateString('pl-PL'), W/2, 86);
-
-    // Divider
-    ctx2d.strokeStyle = 'rgba(201,168,76,0.3)';
-    ctx2d.lineWidth = 1;
-    ctx2d.beginPath();
-    ctx2d.moveTo(40, 100); ctx2d.lineTo(W-40, 100);
-    ctx2d.stroke();
-
-    // Get ranking data
     var players = STATE.users.filter(function(u){ return u.role==='player'||u.role==='admin'; });
     var ranked = players.map(function(p){ return Object.assign({},p,getPlayerStats(p.id)); })
       .sort(function(a,b){
@@ -2815,92 +2897,25 @@ async function downloadRankingPNG() {
         return a.name.localeCompare(b.name,'pl');
       });
 
-    if (!ranked.length) { hideLoader(); toast('Brak danych rankingu.','error'); return; }
-
-    var maxPts = ranked[0].total || 1;
-    var n = ranked.length;
-    var barAreaLeft = 180;
-    var barAreaRight = W - 100;
-    var barAreaWidth = barAreaRight - barAreaLeft;
-    var topY = 115;
-    var bottomY = H - 50;
-    var availH = bottomY - topY;
-    var barH = Math.min(32, Math.floor(availH / n) - 6);
-    var gap = Math.floor((availH - barH * n) / (n + 1));
-
-    // Medal colors
-    var posColors = ['#ffd700','#c0c0c0','#cd7f32'];
-
-    ranked.forEach(function(p, i) {
-      var y = topY + gap + i * (barH + gap);
-      var barW = Math.round((p.total / maxPts) * barAreaWidth);
-
-      // Bar background
-      ctx2d.fillStyle = 'rgba(255,255,255,0.04)';
-      ctx2d.roundRect(barAreaLeft, y, barAreaWidth, barH, 4);
-      ctx2d.fill();
-
-      // Bar fill
-      var gradient = ctx2d.createLinearGradient(barAreaLeft, 0, barAreaLeft + barW, 0);
-      if (i === 0) {
-        gradient.addColorStop(0, '#c9a84c');
-        gradient.addColorStop(1, '#f0c96a');
-      } else if (i === 1) {
-        gradient.addColorStop(0, '#7db5f0');
-        gradient.addColorStop(1, '#9dcaf0');
-      } else if (i === 2) {
-        gradient.addColorStop(0, '#e8b84a');
-        gradient.addColorStop(1, '#f0c96a');
-      } else {
-        gradient.addColorStop(0, 'rgba(201,168,76,0.4)');
-        gradient.addColorStop(1, 'rgba(201,168,76,0.6)');
-      }
-      ctx2d.fillStyle = gradient;
-      ctx2d.beginPath();
-      ctx2d.roundRect(barAreaLeft, y, Math.max(barW, 4), barH, 4);
-      ctx2d.fill();
-
-      // Position number
-      ctx2d.fillStyle = i < 3 ? posColors[i] : '#556688';
-      ctx2d.font = 'bold ' + (barH * 0.7) + 'px Arial';
-      ctx2d.textAlign = 'right';
-      ctx2d.fillText((i+1)+'.', barAreaLeft - 10, y + barH * 0.75);
-
-      // Name
-      ctx2d.fillStyle = '#f0f4ff';
-      ctx2d.font = (barH * 0.55) + 'px Arial';
-      ctx2d.textAlign = 'left';
-      var shortName = p.name.length > 12 ? p.name.slice(0,11)+'.' : p.name;
-      ctx2d.fillText(shortName, 10, y + barH * 0.72);
-
-      // Points label on bar
-      if (p.total > 0) {
-        ctx2d.fillStyle = i < 3 ? '#0a1628' : '#f0f4ff';
-        ctx2d.font = 'bold ' + (barH * 0.55) + 'px Arial';
-        ctx2d.textAlign = 'left';
-        var labelX = barAreaLeft + barW + 8;
-        if (barW < 60) labelX = barAreaLeft + barW + 8;
-        ctx2d.fillStyle = '#c9a84c';
-        ctx2d.fillText(p.total + ' pkt', labelX, y + barH * 0.72);
-      }
-    });
-
-    // Bottom bar
-    ctx2d.fillStyle = '#c9a84c';
-    ctx2d.fillRect(0, H-6, W, 6);
-
-    // Footer
-    ctx2d.fillStyle = '#445566';
-    ctx2d.font = '14px Arial';
-    ctx2d.textAlign = 'center';
-    ctx2d.fillText('brawobabcia.github.io/mundial2026', W/2, H-14);
+    var canvas, filename;
+    if (mode === 'top5') {
+      canvas = drawRankingCanvas(ranked.slice(0,5), 1080, 1080, 'TOP 5 · Ranking fazy grupowej');
+      filename = 'Mundial2026_TOP5.png';
+    } else if (mode === 'last5') {
+      var last = ranked.slice(-5).reverse();
+      canvas = drawRankingCanvas(last, 1080, 1080, 'LAST 5 · Ranking fazy grupowej');
+      filename = 'Mundial2026_LAST5.png';
+    } else {
+      canvas = drawRankingCanvas(ranked, 1080, 1920, 'Ranking fazy grupowej · ' + ranked.length + ' graczy');
+      filename = 'Mundial2026_Ranking.png';
+    }
 
     hideLoader();
     var a = document.createElement('a');
-    a.download = 'Mundial2026_Ranking_FB.png';
+    a.download = filename;
     a.href = canvas.toDataURL('image/png');
     a.click();
-    toast('PNG dla Facebook pobrany!');
+    toast('PNG pobrany!');
   } catch(e) {
     hideLoader();
     toast('Błąd: '+e.message, 'error');
