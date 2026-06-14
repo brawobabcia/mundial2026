@@ -2179,7 +2179,7 @@ function renderRankings() {
       layout: { padding: { right: 80 } },
       scales: {
         x: { ticks: {color:'#8899bb',font:{family:'Outfit',size:13}}, grid: {color:'rgba(201,168,76,0.05)'}, beginAtZero:true, max: Math.max(...ranked.map(p=>p.total)) * 1.18 },
-        y: { ticks: {color:'#f0f4ff',font:{family:'Outfit',size:14},autoSkip:false,align:'start'}, grid: {color:'rgba(201,168,76,0.05)'}, afterFit:function(axis){axis.width=150;}, position:'left' }
+        y: { ticks: {color:'#f0f4ff',font:{family:'Outfit',size:14},autoSkip:false,mirror:false,crossAlign:'near'}, grid: {color:'rgba(201,168,76,0.05)'}, afterFit:function(axis){axis.width=160;}, position:'left' }
       }
     }
   });
@@ -3187,7 +3187,7 @@ function drawRankingCanvas(ranked, W, H, title, startPos, reversed) {
   ranked.forEach(function(p, i) {
     var pos = reversed ? (startPos - i) : (startPos + i);
     var y = topY + gap + i * (barH + gap);
-    var barW = Math.max(Math.round((p.total / maxPts) * barAreaW), 6);
+    var barW = Math.max(Math.round((p.total / maxPts) * barAreaW * 0.80), 6);
 
     // Row background
     c.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
