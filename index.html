@@ -3104,7 +3104,7 @@ async function downloadMatchInfographic() {
   toast('Infografika pobrana!');
 }
 
-function drawRankingCanvas(ranked, W, H, title, startPos, reversed) {
+function drawRankingCanvas(ranked, W, H, title, startPos, reversed, globalMax) {
   var canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   var c = canvas.getContext('2d');
@@ -3147,7 +3147,7 @@ function drawRankingCanvas(ranked, W, H, title, startPos, reversed) {
   var n = ranked.length;
   var barH = Math.floor(availH / n * 0.65);
   var gap = Math.floor((availH - barH * n) / (n + 1));
-  var maxPts = ranked[0].total || 1;
+  var maxPts = globalMax || ranked[0].total || 1;
 
   // Layout: pos | name | bar(narrow) | pts
   var leftPad = Math.round(W * 0.04);
@@ -3275,7 +3275,7 @@ function downloadRankingPNG(mode) {
     } else if (mode === 'bottom5') {
       var last = ranked.slice().reverse().slice(0, 5);
       var startPos = ranked.length;
-      canvas = drawRankingCanvas(last, 1080, 1080, 'BOTTOM 5 · Ranking fazy grupowej', startPos, true);
+      canvas = drawRankingCanvas(last, 1080, 1080, 'BOTTOM 5 · Ranking fazy grupowej', startPos, true, ranked[0].total);
       filename = 'Mundial2026_BOTTOM5.png';
     } else {
       canvas = drawRankingCanvas(ranked, 1080, 1920, 'Ranking fazy grupowej · ' + ranked.length + ' graczy', 1);
